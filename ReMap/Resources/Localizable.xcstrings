@@ -1,0 +1,1090 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "%@ reads like linear notes. What do some of these share?" : {
+
+    },
+    "%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld fixed · %lld to go" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld fixed · %2$lld to go"
+          }
+        }
+      }
+    },
+    "%lld headlines" : {
+
+    },
+    "%lld ideas" : {
+
+    },
+    "%lld links" : {
+
+    },
+    "%lld of %lld sorted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld sorted"
+          }
+        }
+      }
+    },
+    "%lld questions to revisit" : {
+
+    },
+    "%lld unsorted headlines" : {
+
+    },
+    "%lld · near %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld · near %2$@"
+          }
+        }
+      }
+    },
+    "/ 05" : {
+
+    },
+    "A title names the topic — it rarely *explains* it. It may end up as your map's title instead." : {
+
+    },
+    "Add a headline" : {
+
+    },
+    "Add an idea to continue" : {
+
+    },
+    "Add idea" : {
+
+    },
+    "All sorted. Ready to connect the ideas." : {
+
+    },
+    "And the rest? What do some of them share?" : {
+
+    },
+    "Applied %lld map changes. Undo is available." : {
+
+    },
+    "Arrow" : {
+
+    },
+    "Ask, explain, or change your map…" : {
+
+    },
+    "Auto-sort headlines" : {
+
+    },
+    "Automatic topic covers" : {
+
+    },
+    "Automatic transcripts arrive with the AI backend. For now, open the video's transcript, copy it and paste it here — or skip and add headlines yourself while you watch." : {
+
+    },
+    "Automatic transcripts arrive with the AI backend. Paste the transcript or add headlines yourself." : {
+
+    },
+    "Back" : {
+
+    },
+    "Back to library" : {
+
+    },
+    "Backbone" : {
+
+    },
+    "Backbone complete" : {
+
+    },
+    "Backbone complete." : {
+
+    },
+    "Backbone first. Details later." : {
+
+    },
+    "Backbone means the 2–4 ideas everything else hangs on. Most headlines will be topics or details." : {
+
+    },
+    "Backbone, %lld links" : {
+
+    },
+    "Better — a backbone idea should branch." : {
+
+    },
+    "Blood calcium" : {
+
+    },
+    "Blood sugar" : {
+
+    },
+    "Building a group" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Chapter, slides, article" : {
+
+    },
+    "Check cover" : {
+
+    },
+    "Check my map" : {
+
+    },
+    "Choose the arrow direction below, or change it on the map." : {
+
+    },
+    "Close" : {
+
+    },
+    "Close journey" : {
+
+    },
+    "Cloud access has not been configured for this internal build yet. You can keep working on your maps." : {
+
+    },
+    "Cloud coach" : {
+
+    },
+    "Cloud coach · OpenAI Realtime" : {
+
+    },
+    "Cloud features" : {
+
+    },
+    "Cloud voice could not connect or the session ended. Return to chat, or retry the connection." : {
+
+    },
+    "Coach" : {
+
+    },
+    "Coach connection" : {
+
+    },
+    "Coach is thinking" : {
+
+    },
+    "Coach suggestions and actions" : {
+
+    },
+    "Coach: %@" : {
+
+    },
+    "Collect" : {
+
+    },
+    "Collect headlines" : {
+
+    },
+    "Collect the headlines, judge what carries the topic, draw that skeleton. Your map keeps growing over several sittings — like your understanding." : {
+
+    },
+    "Connect to" : {
+
+    },
+    "Connected. That bridge is where understanding lives." : {
+
+    },
+    "Connecting your voice…" : {
+
+    },
+    "Connecting…" : {
+
+    },
+    "Continue" : {
+
+    },
+    "Continue in a later session" : {
+
+    },
+    "Continue through the earlier steps to unlock." : {
+
+    },
+    "Continue to your editable map" : {
+
+    },
+    "Copying isn't learning." : {
+
+    },
+    "Could not save the token securely. Please try again." : {
+
+    },
+    "Couldn't import" : {
+
+    },
+    "Current step" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete link" : {
+
+    },
+    "Demo controls" : {
+
+    },
+    "Detail" : {
+
+    },
+    "Details can wait for your next sitting." : {
+
+    },
+    "Do it on the paper — I'll notice." : {
+
+    },
+    "Don't draw anything yet. Skim these headlines, fix the wording, add what's missing. This is priming — it gives new facts something to hold on to." : {
+
+    },
+    "Done" : {
+
+    },
+    "Done — it's the title now. Notice anything? Your groups just became islands. That's the next lesson: connect them." : {
+
+    },
+    "Double-tap to rename" : {
+
+    },
+    "Drag onto the map, or double-tap to place." : {
+
+    },
+    "Drag to link" : {
+
+    },
+    "Draw that link on the paper — drag from the node's arrow handle." : {
+
+    },
+    "Draw the backbone" : {
+
+    },
+    "Draw the skeleton" : {
+
+    },
+    "Drop an idea here" : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit %@" : {
+
+    },
+    "Edit label" : {
+
+    },
+    "Effort stays. Friction goes." : {
+
+    },
+    "End conversation" : {
+
+    },
+    "Endocrine basics" : {
+
+    },
+    "Enter an HTTPS server URL without credentials or query parameters." : {
+
+    },
+    "Enter the access token for this server." : {
+
+    },
+    "Everything else depends on it" : {
+
+    },
+    "Explain how these two ideas are related. A reason about their position is not enough." : {
+
+    },
+    "Explain it in one sentence…" : {
+
+    },
+    "Explain the relationship more clearly: what does “%@” *do* to “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Explain the relationship more clearly: what does “%1$@” *do* to “%2$@”?"
+          }
+        }
+      }
+    },
+    "Explain this link in one sentence: how does “%@” act on “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Explain this link in one sentence: how does “%1$@” act on “%2$@”?"
+          }
+        }
+      }
+    },
+    "Explore, edit and add details" : {
+
+    },
+    "Facts you attach later — or turn into flashcards." : {
+
+    },
+    "Fair. You'll test the hunch on the map — I'll ask again there." : {
+
+    },
+    "Finding a home" : {
+
+    },
+    "Fine — keep it if it carries meaning beyond a title." : {
+
+    },
+    "Fit map" : {
+
+    },
+    "Gather the headlines" : {
+
+    },
+    "Gather the headlines." : {
+
+    },
+    "Good — that arrow tells a story now." : {
+
+    },
+    "Grounded in a relationship. I saved your reason on the arrow — check it against your source." : {
+
+    },
+    "Group %lld" : {
+
+    },
+    "Group color" : {
+
+    },
+    "HOW ARE THEY RELATED?" : {
+
+    },
+    "Handwrite ideas" : {
+
+    },
+    "Headlines sorted" : {
+
+    },
+    "Highlighted the discussed ideas. Your map is unchanged." : {
+
+    },
+    "Hint: one of them lowers blood sugar, the other raises it." : {
+
+    },
+    "Hub gone. Each group now carries its own meaning." : {
+
+    },
+    "I'm listening" : {
+
+    },
+    "I'm not sure" : {
+
+    },
+    "Ideas that hang on the backbone." : {
+
+    },
+    "If you can say it in one sentence, you understand it." : {
+
+    },
+    "Illustrating…" : {
+
+    },
+    "It asks. You think." : {
+
+    },
+    "It just fit there" : {
+
+    },
+    "It makes the hormones" : {
+
+    },
+    "It's a detail — make it a flashcard" : {
+
+    },
+    "It's the chapter title" : {
+
+    },
+    "Judge what matters" : {
+
+    },
+    "Jump to phase" : {
+
+    },
+    "Just a hunch" : {
+
+    },
+    "Keep %@ on map" : {
+
+    },
+    "Keep editing or add details" : {
+
+    },
+    "Keep it as a node" : {
+
+    },
+    "Lecture" : {
+
+    },
+    "Lecture video" : {
+
+    },
+    "Let's question your map. I'll point at one thing at a time — you decide what to change." : {
+
+    },
+    "Let's reconnect" : {
+
+    },
+    "Library menu" : {
+
+    },
+    "Link without direction" : {
+
+    },
+    "Listening" : {
+
+    },
+    "Live captions will appear here" : {
+
+    },
+    "Load the 'wrong' map" : {
+
+    },
+    "Look at the ideas around it. What do some of them have in common?" : {
+
+    },
+    "Make %@ a flashcard" : {
+
+    },
+    "Make it the title" : {
+
+    },
+    "Map review can use on-device or offline questions. Open conversation and continuous voice require the cloud connection. Relationship checks are prompts for reflection, not a fact-check of your source." : {
+
+    },
+    "Mark as backbone" : {
+
+    },
+    "Message to coach" : {
+
+    },
+    "Microphone access is off. Enable it in Settings → ReMap, or type your answer." : {
+
+    },
+    "Microphone audio is unavailable. Close voice mode and try again, or type your answer." : {
+
+    },
+    "Microphone off" : {
+
+    },
+    "Mind map" : {
+
+    },
+    "Minimize coach" : {
+
+    },
+    "Minimized" : {
+
+    },
+    "More" : {
+
+    },
+    "Move selected headline to %@" : {
+
+    },
+    "Move to %@" : {
+
+    },
+    "Mute microphone" : {
+
+    },
+    "My notes" : {
+
+    },
+    "NOW" : {
+
+    },
+    "Name the shared idea in 1–3 words. What would you write on that group?" : {
+
+    },
+    "New demo session" : {
+
+    },
+    "New idea" : {
+
+    },
+    "New map" : {
+
+    },
+    "Next" : {
+
+    },
+    "Next you'll judge which of these really matter." : {
+
+    },
+    "Nice — “%@” is a group now. Tap the ideas that belong to it." : {
+
+    },
+    "No direction" : {
+
+    },
+    "No group" : {
+
+    },
+    "No headlines found. Add the ones you notice while you skim." : {
+
+    },
+    "No microphone input is available. Type your answer instead." : {
+
+    },
+    "No problem. Place it whenever you're ready." : {
+
+    },
+    "Not yet available" : {
+
+    },
+    "Noted. Tap Check whenever you want me to look again." : {
+
+    },
+    "Notes or text" : {
+
+    },
+    "Nothing to check yet — put a few ideas on the paper first." : {
+
+    },
+    "Now the map has a spine." : {
+
+    },
+    "Now “%@” only connects groups — it has become a title. Make it the map's title?" : {
+
+    },
+    "OK" : {
+
+    },
+    "One idea at a time." : {
+
+    },
+    "Open" : {
+
+    },
+    "Open mind map" : {
+
+    },
+    "Open your conversation with the coach" : {
+
+    },
+    "Open your interactive map and make the detail ideas available." : {
+
+    },
+    "Opens all steps and lets you return to a visited step." : {
+
+    },
+    "Opens all steps." : {
+
+    },
+    "Option %lld: next to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Option %1$lld: next to %2$@"
+          }
+        }
+      }
+    },
+    "PDF" : {
+
+    },
+    "Page %lld" : {
+
+    },
+    "Pages of beautiful notes feel productive. But learning happens in the gap between reading and writing — when your brain has to decide what matters." : {
+
+    },
+    "Paste anything" : {
+
+    },
+    "Paste your notes, an article or a transcript…" : {
+
+    },
+    "Phase: %@" : {
+
+    },
+    "Pick any two of them and ask: what changes when they act?" : {
+
+    },
+    "Pick at least one idea for this group before moving on." : {
+
+    },
+    "Pick one of the three spots first." : {
+
+    },
+    "Places the selected headline in this section." : {
+
+    },
+    "Private test connection" : {
+
+    },
+    "Put it on the paper" : {
+
+    },
+    "Question your map" : {
+
+    },
+    "Questions still open" : {
+
+    },
+    "ReMap never draws your map for you. It questions your arrows, your groups and your hubs — out loud if you like — so the understanding stays yours." : {
+
+    },
+    "ReMap pulls the headlines out. Deciding what matters stays your job." : {
+
+    },
+    "ReMap server URL (https://…)" : {
+
+    },
+    "Ready" : {
+
+    },
+    "Ready when you are" : {
+
+    },
+    "Ready when you are. I'll question your map — one thing at a time." : {
+
+    },
+    "Redo" : {
+
+    },
+    "Reflect" : {
+
+    },
+    "Reflect on map" : {
+
+    },
+    "Refresh cover" : {
+
+    },
+    "Regroup by function" : {
+
+    },
+    "Release to place it here" : {
+
+    },
+    "Release to return" : {
+
+    },
+    "Remove" : {
+
+    },
+    "Remove from backbone" : {
+
+    },
+    "Rename" : {
+
+    },
+    "Rename map" : {
+
+    },
+    "Replay onboarding" : {
+
+    },
+    "Reset session" : {
+
+    },
+    "Retry cover" : {
+
+    },
+    "Return to any visited step." : {
+
+    },
+    "Return to chat" : {
+
+    },
+    "Return to headlines" : {
+
+    },
+    "Returns to this step." : {
+
+    },
+    "Review complete" : {
+
+    },
+    "Review map" : {
+
+    },
+    "Review paused with %lld questions still open. Skipping keeps them for next time." : {
+
+    },
+    "Review your map with the coach, one question at a time." : {
+
+    },
+    "Room to think." : {
+
+    },
+    "Save" : {
+
+    },
+    "Saved covers and maps remain available offline. When cloud coaching is unavailable, ReMap uses its on-device coach or offline questions." : {
+
+    },
+    "Select a headline first." : {
+
+    },
+    "Select, then tap a section. Or drag to move." : {
+
+    },
+    "Send message" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Sharper. Fewer words, more thinking." : {
+
+    },
+    "Sketch" : {
+
+    },
+    "Skimming your source for its headlines…" : {
+
+    },
+    "Skip" : {
+
+    },
+    "Sort" : {
+
+    },
+    "Sort them" : {
+
+    },
+    "Speaking" : {
+
+    },
+    "Speech recognition is off. Enable it in Settings → ReMap, or type your answer." : {
+
+    },
+    "Speech recognition isn't available right now. Type your answer instead." : {
+
+    },
+    "Speech recognition stopped. Close voice mode and try again, or type your answer." : {
+
+    },
+    "Start mapping" : {
+
+    },
+    "Start with an idea" : {
+
+    },
+    "Start with the backbone: drag your backbone ideas from the tray onto the paper and link them. Arrows should say who acts on whom." : {
+
+    },
+    "Step %lld of 5, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$lld of 5, %2$@"
+          }
+        }
+      }
+    },
+    "Step %lld, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$lld, %2$@"
+          }
+        }
+      }
+    },
+    "Still %lld words. Shorter — what's the one idea?" : {
+
+    },
+    "Still solid." : {
+
+    },
+    "Stress" : {
+
+    },
+    "Study journey" : {
+
+    },
+    "THE LEARNING PROCESS" : {
+
+    },
+    "Talk" : {
+
+    },
+    "Talk or write to your coach" : {
+
+    },
+    "Talk to the coach" : {
+
+    },
+    "Tap here to place your idea" : {
+
+    },
+    "Tap the ideas that belong to the group, then say Done." : {
+
+    },
+    "Tester access token" : {
+
+    },
+    "That's %lld backbone ideas. A backbone holds 2–4 — which of these could hang on another?" : {
+
+    },
+    "That's *where* they come from — an address, not a meaning. What do they *do* in common?" : {
+
+    },
+    "That's *where* they come from. Keep it for now — we'll test it on the map." : {
+
+    },
+    "That's a backbone reason. Keep going." : {
+
+    },
+    "That's a structure now, not a list." : {
+
+    },
+    "The cloud coach could not reply. Your map is saved; try again or use Check my map for an offline review." : {
+
+    },
+    "The cloud coach is temporarily unavailable. Your map is saved; please try again later." : {
+
+    },
+    "The cloud coach's current usage limit has been reached. You can continue editing and reviewing your map offline." : {
+
+    },
+    "The cloud connection is unavailable. Your map is saved, and Check my map can still review its structure offline." : {
+
+    },
+    "The cloud connection needs its internal access configuration. Your map remains available offline." : {
+
+    },
+    "The coach sends relevant map labels and your messages to OpenAI through ReMap. Voice uses the microphone only when you start a voice conversation." : {
+
+    },
+    "The few ideas that carry the whole topic." : {
+
+    },
+    "Then which effect matters more for this topic? Pick the stronger one — that's the judgment." : {
+
+    },
+    "They affect each other" : {
+
+    },
+    "They come from the adrenal glands" : {
+
+    },
+    "Think it through, together" : {
+
+    },
+    "Thinking about your question…" : {
+
+    },
+    "Thinking…" : {
+
+    },
+    "This PDF couldn't be read." : {
+
+    },
+    "This link between “%@” and “%@” has no direction. Who acts on whom?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This link between “%1$@” and “%2$@” has no direction. Who acts on whom?"
+          }
+        }
+      }
+    },
+    "Tidy up" : {
+
+    },
+    "Title" : {
+
+    },
+    "Topic" : {
+
+    },
+    "Topic covers send the topic title and up to six headlines to fal.ai. Your PDFs, full notes and sketches stay on this iPad." : {
+
+    },
+    "Try again" : {
+
+    },
+    "Try an example" : {
+
+    },
+    "Turn microphone on" : {
+
+    },
+    "Undid the coach's last map change." : {
+
+    },
+    "Undid the most recent map change." : {
+
+    },
+    "Undo" : {
+
+    },
+    "Undo coach change" : {
+
+    },
+    "Undo moving %@" : {
+
+    },
+    "Unmark backbone" : {
+
+    },
+    "Use cloud coach" : {
+
+    },
+    "Use the tester token supplied with your ReMap server. Never enter an OpenAI API key here." : {
+
+    },
+    "Visited" : {
+
+    },
+    "Voice could not connect to the cloud coach. Return to chat to continue with an offline map review, or retry when the connection is ready." : {
+
+    },
+    "Voice reply interrupted before completion." : {
+
+    },
+    "Voice session ended. Close and reopen voice mode to continue." : {
+
+    },
+    "We can keep talking in chat" : {
+
+    },
+    "Welcome back. Hang the details on your backbone — I'll keep an eye on the structure." : {
+
+    },
+    "What are you studying?" : {
+
+    },
+    "What carries the topic?" : {
+
+    },
+    "What they do matters more" : {
+
+    },
+    "When enabled, relevant map ideas, links, positions and recent messages are sent through your ReMap server to OpenAI. In voice mode, microphone audio streams to OpenAI until you mute or close voice. PDFs and sketches stay on this iPad. Use it only for content you are comfortable sharing." : {
+
+    },
+    "Where does it go?" : {
+
+    },
+    "Where does “%@” belong? Three spots, three different stories — pick one." : {
+
+    },
+    "Where does “%@” go?" : {
+
+    },
+    "Where should this go?" : {
+
+    },
+    "Which 2–4 ideas carry this whole topic? Long-press them and mark them as backbone." : {
+
+    },
+    "Why is “%@” backbone?" : {
+
+    },
+    "Why is “%@” backbone? Is the organ the important part — or what its hormones *do*?" : {
+
+    },
+    "Why next to “%@”?" : {
+
+    },
+    "Write with Apple Pencil, drag ideas around, talk it through. Everything that isn't thinking, we take off your hands." : {
+
+    },
+    "You can move any card back here." : {
+
+    },
+    "You: %@" : {
+
+    },
+    "YouTube link + transcript" : {
+
+    },
+    "Your journey." : {
+
+    },
+    "Your map holds up. Every node earns its place and every arrow says something." : {
+
+    },
+    "Your microphone is off" : {
+
+    },
+    "Your study material" : {
+
+    },
+    "from page %lld" : {
+
+    },
+    "https://youtube.com/watch?v=…" : {
+
+    },
+    "p.%lld" : {
+
+    },
+    "“%@” has %lld links. When everything hangs off one node, it's a title — not an idea." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "“%1$@” has %2$lld links. When everything hangs off one node, it's a title — not an idea."
+          }
+        }
+      }
+    },
+    "“%@” is %lld words. Say it in 1–3 — filtering is where the learning happens." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "“%1$@” is %2$lld words. Say it in 1–3 — filtering is where the learning happens."
+          }
+        }
+      }
+    },
+    "“%@” is backbone, but it barely branches. What else does it connect to?" : {
+
+    },
+    "“%@” is cut off from the rest — an island. How does it connect to the main map? Draw that arrow." : {
+
+    }
+  },
+  "version" : "1.0"
+}

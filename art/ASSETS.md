@@ -1,0 +1,14 @@
+| file | transparent | size | subject |
+|---|---|---|---|
+| onboarding_hand_ipad.png | yes | 1536x1024 | Halftone-dot photo cutout of a hand holding an iPad (landscape) whose screen shows a simple hand-drawn mind map: 5 circles linked by thin ink lines, one circle filled olive. A small grainy olive thought-bubble dot near the corner. |
+| onboarding_thought_cloud.png | yes | 1024x1024 | A big grainy olive/khaki cloud blob (stippled riso texture) containing three thin ink-outlined circles connected by short lines; the last circle has a tiny smiley face. Two small olive blobs trailing below like a thought bubble. |
+| onboarding_linear_notes.png | yes | 1024x1024 | A messy stack of 3-4 lined paper sheets full of dense identical handwriting-like scribble lines (no real letters), slightly fanned; halftone shadow; one sheet has a tired coffee ring. Conveys "linear notes overload". |
+| onboarding_map_sheet.png | yes | 1024x1280 | A cream paper sheet, slightly rotated, with two hand-drawn numbered columns "1." and "2." of ink lines at top, and a butter-yellow panel below containing a network graph: dark olive circles of different sizes connected by thin lines, with small grainy olive cloud blobs attached to some nodes. A second sheet peeks behind it. Only text allowed: "1." and "2.". |
+| library_empty.png | yes | 1536x1024 | Halftone-dot cutout of a student's desk scene from above: open notebook, a pencil, a closed laptop/iPad, a mug; a few hand-drawn ink arrows and circles doodled around; one grainy olive cloud blob. |
+| collect_reading.png | yes | 1024x1024 | Halftone-dot cutout of an open textbook with a vintage magnifying glass over it; grainy olive cloud blobs floating out of the pages; a few thin ink sparkle doodles. |
+| celebration.png | yes | 1024x1024 | Halftone-dot cutout of a hand raising a pencil like a trophy, surrounded by grainy olive and butter-yellow confetti blobs and small hand-drawn ink stars/squiggles. |
+| coach_pencil.png | yes | 1024x1024 | A single vintage wooden pencil as a halftone-dot cutout, tilted 30 degrees, with a short hand-drawn ink scribble loop coming from its tip and one small grainy olive blob. Simple, icon-like. |
+| backdrop_campus.png | yes | 1536x768 | Wide halftone-dot cutout skyline of a classical university building with a dome and columns (like a European university), monochrome ink on transparent, cut along the bottom edge. |
+| blob_cloud_a.png | yes | 1024x1024 | One isolated grainy olive/khaki cloud-shaped blob with stippled riso grain texture and soft irregular cut edge. Nothing else. |
+| blob_cloud_b.png | yes | 1024x1024 | One isolated grainy butter-yellow (#F3EDB0) irregular round blob with stipple grain texture, slightly darker grain at edges. Nothing else. |
+| texture_paper.png | no | 1024x1024 | Seamless tileable cream paper texture (#ECE8DF) with very subtle fiber grain and faint speckles, flat, no shadows, no vignette, no objects. |

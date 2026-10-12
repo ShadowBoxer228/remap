@@ -1,0 +1,72 @@
+name: ReMap
+options:
+  bundleIdPrefix: com.selimtatar
+  deploymentTarget:
+    iOS: "26.0"
+  defaultSourceDirectoryType: syncedFolder
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 334SK39CVZ
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: "YES"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
+    SWIFT_EMIT_LOC_STRINGS: "YES"
+targets:
+  ReMap:
+    type: application
+    platform: iOS
+    sources:
+      - path: ReMap
+    info:
+      path: Config/Info.plist
+      properties:
+        CFBundleDisplayName: ReMap
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.education
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIAppFonts:
+          - ShantellSans.ttf
+        NSMicrophoneUsageDescription: ReMap listens when you talk through your mind map with the coach.
+        NSSpeechRecognitionUsageDescription: ReMap turns what you say to the coach into text, on your device.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.selimtatar.ReMap
+        PRODUCT_NAME: ReMap
+        TARGETED_DEVICE_FAMILY: "2"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: "YES"
+        SUPPORTS_MACCATALYST: "NO"
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
+    scheme:
+      testTargets:
+        - ReMapTests
+  ReMapTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ReMapTests
+    dependencies:
+      - target: ReMap
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: com.selimtatar.ReMapTests
+        TARGETED_DEVICE_FAMILY: "2"

@@ -1,0 +1,7 @@
+.env*
+!.env.example
+.vercel
+node_modules
+__pycache__
+*.test.mjs
+schema.sql

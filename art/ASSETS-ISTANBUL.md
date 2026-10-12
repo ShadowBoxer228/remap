@@ -1,0 +1,4 @@
+| file | transparent | size | subject |
+|---|---|---|---|
+| backdrop_istanbul.png | yes | 1536x768 | Wide halftone-dot monochrome cutout skyline of Istanbul's Beyoğlu: the Galata Tower (conical stone tower with its pointed cap) prominent slightly right of center, rows of old Istanbul apartment buildings with bay windows stepping down the hill on both sides, a distant mosque dome with two thin minarets at the far left, cut along a clean straight bottom edge. Two small hand-drawn ink seagull doodles in the sky and one grainy olive cloud blob behind the tower. |
+| galata_tower.png | yes | 768x1536 | A single tall halftone-dot monochrome cutout of the Galata Tower in Istanbul (cylindrical stone tower, arched windows, balcony ring, conical pointed cap), slightly tilted 3 degrees, standing on a small cut of rooftops; a butter-yellow (#F3EDB0) grainy round blob behind its top like a sun; one hand-drawn ink seagull doodle. |
