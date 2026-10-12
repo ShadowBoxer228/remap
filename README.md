@@ -26,6 +26,7 @@ organize them, connect them and talk through your reasoning.
 ### Made for the iPad
 
 - **A tactile canvas.** Move ideas, draw with Pencil and keep sketches alongside the map.
+- **Source-based starting points.** For PDF imports, OpenAI proposes 6–24 topics from extracted text, with page anchors checked against the document.
 - **A coach in context.** Conversations use the current map and available source material; PDF references open the relevant page.
 - **Text and voice.** Ask a question, explain a connection or request a map edit. Voice includes live captions.
 - **Edits you control.** Explicit coach commands are checked against the current map and applied as one undoable transaction.
@@ -84,18 +85,20 @@ configuration; the app validates map mutations again before applying them. Read 
 | Path | Contents |
 | :--- | :--- |
 | [`ReMap/`](ReMap/) | Native application, canvas, coach, source handling and persistence |
-| [`ReMapTests/`](ReMapTests/) | Model, command, lifecycle and audio tests |
+| [`ReMapTests/`](ReMapTests/) | Model, command, source, lifecycle and audio tests |
 | [`backend/`](backend/) | Authenticated Hono gateway and protocol tests |
 | [`art/`](art/README.md) | Illustration sources, prompts and visual identity |
 | [`Licenses/`](Licenses/) | Third-party font license |
 | [`tools/`](tools/) | Asset preparation and development helpers |
 | [`project.yml`](project.yml) | XcodeGen project definition |
 
-## Snapshot
-
-This repository currently contains the completed **1.0.0 (4)** app source and matching gateway snapshot. Further coaching refinements are in development and will be published after qualification.
-
 ## Verification and platform support
+
+This source snapshot targets **1.0.0 (5)**. It includes shared text/voice teaching
+policy, validated PDF references, OpenAI topic extraction and immediate chat
+updates. Library scrolling was hardened; the reported iPadOS 17 crash still needs
+a device crash report and verification on that OS. Distribution status is tracked
+separately from the source snapshot.
 
 Backend checks run with `npm ci` and `npm test` from `backend/`. Native tests run
 with the ReMap scheme on an explicitly selected iPad simulator; see

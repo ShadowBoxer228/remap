@@ -27,4 +27,7 @@ checks. Simulator runs used a newer OS. Physical Pencil/acoustic and fresh
 TestFlight enrollment checks also need their own evidence. These are pending
 checks, not passes, and do not change the deployment target.
 
-A Library scrolling crash has been reported on iPadOS 17 and is under investigation. This snapshot is not a claim that every primary-platform flow has been qualified.
+A Library scrolling crash was reported on a physical iPadOS 17 device. Build 5
+adds bounded thumbnail caching, finite layout guards and a row-based card layout.
+Scrolling and rotation with 32 cards were checked on iPadOS 27. The original
+17.x crash cause and its resolution are **not confirmed** without device evidence.

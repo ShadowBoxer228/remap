@@ -30,6 +30,8 @@ nonisolated extension StudySession {
     var isTrainingDemo: Bool { source.kind == .demo && source.name == "TrainingLLM.pdf" }
     /// PDFs always use this engine, including pending/failed uploads. Never fall back to legacy content.
     var usesLocalCoach: Bool { isTrainingDemo || (source.kind == .pdf && source.usesLearningEngine == true) }
+    /// Coaching can use every attached PDF without changing legacy Sort/Backbone rules.
+    var usesPDFCoach: Bool { isTrainingDemo || source.kind == .pdf }
     var localCoachSourceID: String? { isTrainingDemo ? TrainingLLMContent.sourceID : source.sourceId }
     var needsSourceUpload: Bool { source.kind == .pdf && source.usesLearningEngine == true && (source.sourceId == nil || source.text == nil) }
     var localSourcePageCount: Int { isTrainingDemo ? 18 : (source.pageCount ?? 0) }

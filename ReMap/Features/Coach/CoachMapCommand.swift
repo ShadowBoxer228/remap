@@ -103,7 +103,9 @@ extension SessionModel {
     func applyCoachCommand(_ command: CoachMapCommand, latestRequest: String) throws -> String {
         guard command.revision == mapRevision else { throw CoachCommandError.stale }
         if session.usesLocalCoach {
-            guard Self.isExplicitEditRequest(latestRequest) else { throw CoachCommandError.invalid }
+            // Highlighting while explaining never changes the map, so it needs no edit request (as on the server).
+            let highlightOnly = command.operations.allSatisfy { $0.kind == .highlight }
+            guard highlightOnly || Self.isExplicitEditRequest(latestRequest) else { throw CoachCommandError.notExplicit }
             let protected = Set(session.backboneKeywords.map(\.id))
             for action in command.operations {
                 if let id = action.id, let node = map.node(id), let keyword = node.headlineID, protected.contains(keyword),
@@ -122,6 +124,7 @@ extension SessionModel {
         }
         var candidate = map
         var highlights: [UUID]?
+        var alreadyLinked = 0
         for action in command.operations {
             switch action.kind {
             case .addNode:
@@ -143,8 +146,9 @@ extension SessionModel {
                 candidate.nodes.removeAll { $0.id == id }; candidate.edges.removeAll { $0.touches(id) }
             case .connect:
                 guard let from = action.from, let to = action.to, from != to,
-                      candidate.node(from) != nil, candidate.node(to) != nil,
-                      candidate.edge(between: from, and: to) == nil else { throw CoachCommandError.invalid }
+                      candidate.node(from) != nil, candidate.node(to) != nil else { throw CoachCommandError.invalid }
+                // An existing link is already what was asked for; it must not sink the rest of the command.
+                if candidate.edge(between: from, and: to) != nil { alreadyLinked += 1; continue }
                 var edge = MapEdge(from: from, to: to, reason: String((action.reason ?? "").prefix(1200)))
                 if let id = action.id {
                     guard candidate.edgeIndex(of: id) == nil else { throw CoachCommandError.invalid }
@@ -198,12 +202,16 @@ extension SessionModel {
         if changed { editMap { $0 = candidate }; selection = .none }
         if let highlights { point(at: highlights) }
         if !changed { return String(localized: "Highlighted the discussed ideas. Your map is unchanged.") }
-        return String(localized: "Applied \(command.operations.count) map changes. Undo is available.")
+        return String(localized: "Applied \(command.operations.count - alreadyLinked) map changes. Undo is available.")
     }
 
+    /// Mirrors the learning-coach server's explicit-intent check (backend/native.mjs) so a request
+    /// the server accepts in English, Russian or Turkish is not rejected again on the iPad.
+    /// `set`/`arrange` are extra local verbs, reported to core for the server list.
+    static let explicitEditPattern = #"(?i)\b(add|create|connect|link|rename|delete|remove|move|tidy|undo|group|mark|highlight|change|draw|set|arrange|rearrange)\b|добав|созда|соедин|свяж|переимен|удал|перемест|отмен|сгрупп|выдел|нарис|ekle|sil|bağla|değiştir|taşı|geri al"#
+
     static func isExplicitEditRequest(_ text: String) -> Bool {
-        let pattern = #"(?i)^\s*(?:(?:please|okay|ok)\s*[,!]?\s*)?(?:(?:can|could|would|will) you\s+(?:please\s+)?)?(?:move|connect|link|add|create|rename|remove|delete|tidy|arrange|rearrange|set|mark|change|draw)\b"#
-        return text.range(of: pattern, options: .regularExpression) != nil
+        text.range(of: explicitEditPattern, options: .regularExpression) != nil
     }
 
     private static func commandLabel(_ value: String?) throws -> String {
@@ -220,13 +228,14 @@ extension SessionModel {
 }
 
 nonisolated enum CoachCommandError: LocalizedError {
-    case stale, invalid, missing, noChange
+    case stale, invalid, missing, noChange, notExplicit
     var errorDescription: String? {
         switch self {
         case .stale: "The map changed while I was thinking. Please ask again using the current board."
         case .invalid: "That command could not be safely applied. Please specify the ideas and change."
         case .missing: "That idea or link is no longer on the map. Please ask again."
         case .noChange: "The map already has that state. Nothing changed."
+        case .notExplicit: "I only change the map when you ask directly, for example \u{201C}connect A to B\u{201D}. Your map is unchanged."
         }
     }
 }

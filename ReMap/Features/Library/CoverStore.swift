@@ -33,6 +33,7 @@ final class CoverStore {
         self.directory = directory ?? URL.applicationSupportDirectory.appending(path: "ReMap/Covers", directoryHint: .isDirectory)
         self.injectedService = service
         images.countLimit = 12
+        images.totalCostLimit = 32 * 1024 * 1024
         try? FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
         let index = self.directory.appending(path: "index.json")
         if FileManager.default.fileExists(atPath: index.path) {
@@ -58,7 +59,7 @@ final class CoverStore {
                 kCGImageSourceShouldCacheImmediately: true
               ] as CFDictionary) else { return nil }
         let image = UIImage(cgImage: cg)
-        images.setObject(image, forKey: name as NSString)
+        images.setObject(image, forKey: name as NSString, cost: cg.bytesPerRow * cg.height)
         return image
     }
 

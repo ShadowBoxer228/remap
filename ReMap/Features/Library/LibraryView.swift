@@ -25,28 +25,18 @@ struct LibraryView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 30) {
                         header
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 28, alignment: .top), count: count),
-                                  alignment: .leading, spacing: 28) {
-                            NewSessionCard(width: width) { showNewSession = true }
-                                .modifier(LibraryEntrance(index: 0))
-                            ForEach(Array(app.store.sortedSessions.enumerated()), id: \.element.id) { index, session in
-                                Button { path.append(session.id) } label: {
-                                    SessionCard(session: session, width: width, image: covers.image(for: session.id),
-                                                isWorking: covers.isWorking(session.id))
+                        // Stable rows avoid LazyVGrid's older-runtime scroll/relayout path.
+                        // Keep the same card widths, spacing, top alignment and content.
+                        let sessions = app.store.sortedSessions
+                        let total = sessions.isEmpty ? 2 : sessions.count + 1
+                        LazyVStack(alignment: .leading, spacing: 28) {
+                            ForEach(Array(stride(from: 0, to: total, by: count)), id: \.self) { start in
+                                HStack(alignment: .top, spacing: 28) {
+                                    ForEach(start..<min(start + count, total), id: \.self) { index in
+                                        libraryCard(index: index, sessions: sessions, width: width)
+                                            .frame(width: width)
+                                    }
                                 }
-                                .buttonStyle(LibraryPressStyle())
-                                .contextMenu { menu(for: session) }
-                                .accessibilityIdentifier("library.topic.\(session.id)")
-                                .accessibilityLabel("\(session.title), \(session.phase.title)")
-                                .modifier(LibraryEntrance(index: index + 1))
-                            }
-                            if app.store.sessions.isEmpty {
-                                Button { path.append(app.createDemoSession()) } label: {
-                                    demoCard(width: width)
-                                }
-                                .buttonStyle(LibraryPressStyle())
-                                .accessibilityIdentifier("library.demo")
-                                .modifier(LibraryEntrance(index: 1))
                             }
                         }
                         .padding(.bottom, 36)
@@ -104,6 +94,31 @@ struct LibraryView: View {
                 if phase == .active { synchronizeCovers() }
                 if phase == .background { covers.pause() }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func libraryCard(index: Int, sessions: [StudySession], width: CGFloat) -> some View {
+        if index == 0 {
+            NewSessionCard(width: width) { showNewSession = true }
+                .modifier(LibraryEntrance(index: 0))
+        } else if sessions.isEmpty {
+            Button { path.append(app.createDemoSession()) } label: { demoCard(width: width) }
+                .buttonStyle(LibraryPressStyle())
+                .accessibilityIdentifier("library.demo")
+                .modifier(LibraryEntrance(index: 1))
+        } else if sessions.indices.contains(index - 1) {
+            let session = sessions[index - 1]
+            Button { path.append(session.id) } label: {
+                SessionCard(session: session, width: width, image: covers.image(for: session.id),
+                            isWorking: covers.isWorking(session.id))
+            }
+            .buttonStyle(LibraryPressStyle())
+            .contextMenu { menu(for: session) }
+            .accessibilityIdentifier("library.topic.\(session.id)")
+            .accessibilityLabel("\(session.title), \(session.phase.title)")
+            .id(session.id)
+            .modifier(LibraryEntrance(index: index))
         }
     }
 

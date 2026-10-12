@@ -187,6 +187,9 @@ struct CoverTests {
 
     @Test("Adaptive layout and paper identities stay stable")
     func layout() {
+        #expect(LibraryPaperStyle.columnCount(width: .nan) == 1)
+        #expect(LibraryPaperStyle.columnCount(width: .infinity) == 1)
+        #expect(LibraryPaperStyle.columnCount(width: -1) == 1)
         #expect(LibraryPaperStyle.columnCount(width: 350) == 1)
         #expect(LibraryPaperStyle.columnCount(width: 740) == 2)
         #expect(LibraryPaperStyle.columnCount(width: 1100) == 3)

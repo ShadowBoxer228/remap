@@ -48,16 +48,16 @@ except public health and the separately verified enrollment exchange.
 | `POST /access/enroll` | Verify an Apple installation proof and issue access |
 | `POST /coach` | Structured review and map conversation |
 | `POST /realtime/token` | Temporary access for the legacy voice path |
+| `POST /api/native/headlines` | Generate 6–24 PDF topics with verified page anchors |
 | `POST /api/native/coach` | Source-grounded text coaching |
 | `POST /api/native/realtime/token` | Source-aware live voice and tool definitions |
 | `POST /api/native/command` | Validate a requested map command |
 | `POST /covers` · `GET /covers/:id` | Submit and inspect optional cover jobs |
 
 PDFKit extracts text and Vision OCR handles scanned pages on the iPad. Native
-requests carry bounded excerpts and, when relevant, a map image. Original PDFs
-remain on the device. Source lookup uses the current session's document. Typed page references are
-restricted to the supplied excerpt pages; page links are not proof that every
-statement is factually correct.
+requests carry bounded excerpts and, when relevant, a map image and a bounded PDF page image to preserve table layout. Original PDFs
+remain on the device. Source lookup and citation validation use the current
+session's document; a model-provided page number is not trusted by itself.
 
 ## Security boundaries
 

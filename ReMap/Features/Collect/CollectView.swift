@@ -46,7 +46,7 @@ struct CollectView: View {
     }
 
     private var coachLine: String {
-        if model.isExtracting { return model.session.source.kind == .pdf ? "Reading your PDF on this iPad… Scanned pages may take a moment." : String(localized: "Skimming your source for its headlines…") }
+        if model.isExtracting { return model.session.source.kind == .pdf ? "Reading your PDF and gathering topics… OpenAI selects 6–24 topics from the PDF. Scanned pages may take longer." : String(localized: "Skimming your source for its headlines…") }
         if let message = model.extractionMessage { return message }
         return String(localized: "Don't draw anything yet. Skim these headlines, fix the wording, add what's missing. This is priming — it gives new facts something to hold on to.")
     }

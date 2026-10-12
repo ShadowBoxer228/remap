@@ -7,7 +7,8 @@ nonisolated enum LibraryPaperStyle {
     }
 
     static func columnCount(width: CGFloat, isPortrait: Bool = false) -> Int {
-        max(1, min(isPortrait ? 2 : 3, Int((width + 28) / 288)))
+        guard width.isFinite, width > 0 else { return 1 }
+        return max(1, min(isPortrait ? 2 : 3, Int(min(width, 10_000) + 28) / 288))
     }
 }
 
@@ -16,6 +17,7 @@ nonisolated struct LibraryPaperShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
+        guard rect.width.isFinite, rect.height.isFinite, rect.width > 0, rect.height > 0 else { return p }
         let inset: CGFloat = 4
         let r = rect.insetBy(dx: inset, dy: inset)
         let corners = [CGPoint(x: r.minX, y: r.minY), CGPoint(x: r.maxX, y: r.minY),

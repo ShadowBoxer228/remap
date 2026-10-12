@@ -46,6 +46,35 @@ nonisolated enum InkGeometry {
             && NodeMetrics.frame(for: target).insetBy(dx: -reach - 40, dy: -reach - 40).intersects(box)
     }
 
+    /// The topic the last ink arrow reached, so a separately drawn arrowhead can be absorbed too.
+    struct ArrowTarget: Equatable, Sendable {
+        var nodeID: UUID
+        var time: Date
+    }
+
+    enum Absorption: Equatable, Sendable {
+        case connect(from: UUID, to: UUID)
+        case arrowhead
+        case keep
+    }
+
+    /// Decides, stroke by stroke in drawing order, which new ink becomes a connection, which is
+    /// that connection's head (within 2.5 s at the target topic) and which stays as ink.
+    static func absorb(_ strokes: [[CGPoint]], nodes: [MapNode], target: inout ArrowTarget?, now: Date = .now) -> [Absorption] {
+        strokes.map { points in
+            if let link = connection(for: points, in: nodes) {
+                target = ArrowTarget(nodeID: link.to, time: now)
+                return .connect(from: link.from, to: link.to)
+            }
+            if let current = target, now.timeIntervalSince(current.time) < 2.5,
+               let node = nodes.first(where: { $0.id == current.nodeID }), isArrowhead(points, at: node) {
+                return .arrowhead
+            }
+            target = nil
+            return .keep
+        }
+    }
+
     static func marks(in drawing: PKDrawing, nodes: [MapNode], limit: Int = 20) -> [Mark] {
         let all = drawing.strokes.map { mark(for: points(of: $0), nodes: nodes) }
         // Circles and arrows say the most about the learner's thinking; keep them when trimming.

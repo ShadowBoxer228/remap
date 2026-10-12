@@ -57,10 +57,10 @@ final class CoachSession {
     // MARK: - Talking
 
     func say(_ text: String, replies: [String] = []) {
-        withAnimation(Motion.snappy) {
-            messages.append(Message(text: text))
-            self.replies = replies
-        }
+        // Publish the history together with the completion/source state. An animated
+        // nested mutation can leave the visible chat one response behind.
+        messages.append(Message(text: text))
+        self.replies = replies
         spokenToken += 1
         model?.conversation.didReceiveCoachMessage(text)
     }

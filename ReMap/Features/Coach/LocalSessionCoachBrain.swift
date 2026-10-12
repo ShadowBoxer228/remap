@@ -6,8 +6,8 @@ final class LocalSessionCoachBrain: CoachBrain {
     init(model: SessionModel) { self.model = model }
     func question(for finding: Finding, in map: MindMap, isDemo: Bool) async -> String {
         guard let model else { return "What relationship do you want this part of the map to express?" }
-        guard !model.session.needsSourceUpload else { return "Prepare your PDF in Collect before asking source questions." }
         do {
+            try await model.prepareCoachSource()
             let labels = finding.nodeIDs.compactMap { map.node($0)?.label }.joined(separator: ", ")
             let request = model.localCoachRequest(message: "Ask one reflective question about these ideas in my map: " + labels)
             let data = try await LocalCoachGateway.post(path: "api/native/coach", body: JSONEncoder().encode(request))

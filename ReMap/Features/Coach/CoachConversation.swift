@@ -22,6 +22,7 @@ final class CoachConversation {
     private var realtime: RealtimeVoiceSession
     @ObservationIgnored private let cloudAvailable: () -> Bool
     @ObservationIgnored private let requestText: (Data) async throws -> Data
+    @ObservationIgnored private let requestPDFText: (Data) async throws -> Data
     private var requestingText = false
     private var localError: String?
     @ObservationIgnored private var requestTask: Task<Void, Never>?
@@ -37,9 +38,11 @@ final class CoachConversation {
 
     init(model: SessionModel, realtime: RealtimeVoiceSession = RealtimeVoiceSession(),
          cloudAvailable: @escaping () -> Bool = { CoachConnection.endpoint != nil },
-         requestText: @escaping (Data) async throws -> Data = { try await CoachGateway.post(path: "coach", body: $0) }) {
+         requestText: @escaping (Data) async throws -> Data = { try await CoachGateway.post(path: "coach", body: $0) },
+         requestPDFText: @escaping (Data) async throws -> Data = { try await LocalCoachGateway.post(path: "api/native/coach", body: $0) }) {
         self.model = model; self.realtime = realtime; self.cloudAvailable = cloudAvailable
         self.requestText = requestText
+        self.requestPDFText = requestPDFText
     }
 
     var activity: CoachActivity {
@@ -79,26 +82,20 @@ final class CoachConversation {
         presentation = .collapsed; model?.coach.close(); model?.isVoiceOpen = false
     }
 
-    func send(_ text: String) {
+    func send(_ text: String, fromVoice: Bool = false) {
         let clean = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(2000))
         guard !clean.isEmpty, let model else { return }
         draft = ""; localError = nil; latestUserRequest = clean
+        sourceReferences = []; sourcePassages = []
         if presentation == .collapsed { presentation = .chat }
         requestTask?.cancel(); requestingText = false
-        if model.session.usesLocalCoach {
-            guard !model.session.needsSourceUpload else {
-                draft = clean
-                localError = "Prepare this PDF first: return to Collect and tap Retry PDF preparation. Your message and map are saved."
-                model.coach.say(localError!)
-                return
-            }
-            if model.coach.mode == .placing { model.coach.reply(clean); return }
-            sendLocal(clean, model: model); return
-        }
         if handlesReviewReply(clean) { model.coach.reply(clean); return }
+        if model.session.usesPDFCoach {
+            sendLocal(clean, model: model, fromVoice: fromVoice); return
+        }
         appendUser(clean)
         if presentation == .voice, realtime.isConnected {
-            realtime.respond(context: context(for: clean)); return
+            realtime.respond(context: context(for: clean), textInput: fromVoice ? nil : clean); return
         }
         guard cloudAvailable() else {
             model.coach.say(String(localized: "The cloud connection is unavailable. Your map is saved, and Check my map can still review its structure offline."), replies: [String(localized: "Check my map")])
@@ -141,30 +138,34 @@ final class CoachConversation {
     func prepareForPhaseChange() {
         generation = UUID(); requestTask?.cancel(); requestingText = false
         contextRevision = nil; contextReviewMode = nil
+        sourceReferences = []; sourcePassages = []; showingSource = false
         if presentation == .voice { realtime.interrupt() }
     }
 
     func startVoice() async {
         guard !voiceAttemptActive else { return }
-        guard model?.session.needsSourceUpload != true else {
-            localError = "Prepare this PDF first: return to Collect and tap Retry PDF preparation."
-            presentation = .chat
-            model?.coach.say(localError!)
-            return
-        }
         voiceAttemptActive = true
         requestTask?.cancel(); requestingText = false
         localError = nil; presentation = .voice; model?.isVoiceOpen = false
-        let voiceAvailable = model?.session.usesLocalCoach == true ? LocalCoachConnection.endpoint != nil : cloudAvailable()
+        let attempt = generation
+        do { try await model?.prepareCoachSource() }
+        catch {
+            guard generation == attempt, !Task.isCancelled else { return }
+            voiceAttemptActive = false; presentation = .chat; localError = error.localizedDescription
+            model?.coach.say(error.localizedDescription)
+            return
+        }
+        guard generation == attempt, !Task.isCancelled else { return }
+        let voiceAvailable = model?.session.usesPDFCoach == true ? LocalCoachConnection.endpoint != nil : cloudAvailable()
         guard voiceAvailable else {
             voiceAttemptActive = false
-            localError = model?.session.usesLocalCoach == true
+            localError = model?.session.usesPDFCoach == true
                 ? String(localized: "Enable Cloud coach in Library Settings to use voice.")
                 : String(localized: "Voice could not connect to the cloud coach. Return to chat to continue with an offline map review, or retry when the connection is ready.")
             return
         }
         isMicrophoneMuted = false
-        realtime.onAnswer = { [weak self] text in self?.send(text) }
+        realtime.onAnswer = { [weak self] text in self?.send(text, fromVoice: true) }
         realtime.onBargeIn = { [weak self] in
             self?.requestTask?.cancel(); self?.requestingText = false
         }
@@ -197,10 +198,10 @@ final class CoachConversation {
             let body = (try? JSONEncoder().encode(result)) ?? Data()
             return String(data: body, encoding: .utf8) ?? "{}"
         }
-        if let model, model.session.usesLocalCoach {
-            realtime.localTokenBody = try? JSONEncoder().encode(model.localCoachRequest(message: "Start English voice coaching", includeSnapshot: false))
+        if let model, model.session.usesPDFCoach {
+            realtime.localTokenBody = try? JSONEncoder().encode(model.localCoachRequest(message: "Start coaching in the learner’s language. Wait for their question.", includeSnapshot: false))
             realtime.onContext = { [weak self] in
-                guard let self, let model = self.model else { return (text: "Session closed", image: nil) }
+                guard let self, let model = self.model else { return (text: "Session closed", images: []) }
                 return model.localCoachContext(message: self.latestUserRequest)
             }
             realtime.onTool = { [weak self] name, data, callID in
@@ -235,7 +236,7 @@ final class CoachConversation {
         realtime.speak(text)
     }
 
-    private func sendLocal(_ text: String, model: SessionModel) {
+    private func sendLocal(_ text: String, model: SessionModel, fromVoice: Bool) {
         // Failed messages are retryable without a duplicate user bubble.
         if let id = failedLocalMessage {
             model.coach.messages.removeAll { $0.id == id }
@@ -244,8 +245,9 @@ final class CoachConversation {
         model.coach.replies = []
         appendUser(text)
         let userID = model.coach.messages.last?.id
+        contextRevision = model.mapRevision; contextReviewMode = model.coach.mode
         if presentation == .voice, realtime.isConnected {
-            realtime.respond(context: "Respond to the latest learner request using the current map and source tools.")
+            realtime.respond(context: "Respond to the latest learner request using the current map and source tools.", textInput: fromVoice ? nil : text)
             return
         }
         let id = UUID(); generation = id
@@ -255,19 +257,29 @@ final class CoachConversation {
             guard let self else { return }
             defer { if generation == id { requestingText = false } }
             do {
+                try await model.prepareCoachSource()
+                guard !Task.isCancelled, generation == id else { return }
                 let input = model.localCoachRequest(message: text)
-                let data = try await LocalCoachGateway.post(path: "api/native/coach", body: JSONEncoder().encode(input))
+                let data = try await requestPDFText(JSONEncoder().encode(input))
                 let reply = try JSONDecoder().decode(LocalCoachReply.self, from: data)
                 guard !Task.isCancelled, generation == id else { return }
-                var seenPages = Set<Int>()
-                sourceReferences = reply.references.filter { seenPages.insert($0.page).inserted }
+                requestingText = false
                 // A drawing can change during a slow request. Never apply or present stale review as current.
                 if originalRevision != model.mapRevision && model.session.phase.usesCanvas {
                     model.coach.say("Your map changed while I was looking. Ask again so I can use the latest drawing.")
                     draft = text
                     return
                 }
-                model.coach.say(reply.message)
+                sourceReferences = model.localSourceMaterial()?.validatedReferences(reply.references) ?? []
+                sourcePassages = sourceReferences.compactMap { reference in
+                    model.localSourceMaterial()?.pages.first(where: { $0.page == reference.page }).map {
+                        LocalSourceResult.Passage(page: $0.page, title: reference.quote ?? "Source", text: $0.text, image: "", imageData: nil)
+                    }
+                }
+                if let answer = reply.review_answer {
+                    let result = submitReviewAnswer(answer)
+                    if !result.ok { model.coach.say(result.message) }
+                } else { model.coach.say(reply.message) }
                 if let command = reply.command {
                     let result = execute(command, callID: id.uuidString, latestRequest: latestUserRequest)
                     model.coach.say(result.message)
@@ -275,6 +287,7 @@ final class CoachConversation {
             } catch {
                 guard !Task.isCancelled, generation == id else { return }
                 failedLocalMessage = userID; failedLocalText = text
+                requestingText = false
                 draft = text
                 localError = error.localizedDescription
                 model.coach.say(error.localizedDescription + " Your message is back in the input box to retry.")
@@ -289,7 +302,7 @@ final class CoachConversation {
     }
 
     private func localTool(name: String, arguments: Data, callID: String) async -> NativeVoiceToolResult {
-        guard let model, model.session.usesLocalCoach else {
+        guard let model, model.session.usesPDFCoach else {
             return NativeVoiceToolResult(output: "{\"error\":\"Unsupported source\"}", images: [])
         }
         let id = generation
@@ -300,6 +313,26 @@ final class CoachConversation {
                 let data = try JSONEncoder().encode(request)
                 let image = model.session.phase.usesCanvas ? CoachCanvasSnapshot.dataURL(model.map) : nil
                 return NativeVoiceToolResult(output: String(data: data, encoding: .utf8) ?? "{}", images: image.map { [$0] } ?? [])
+            case "cite_sources":
+                struct Citation: Decodable { let page: Int; let quote: String }
+                struct Input: Decodable { let citations: [Citation] }
+                let input = try JSONDecoder().decode(Input.self, from: arguments)
+                guard (1...3).contains(input.citations.count), let material = model.localSourceMaterial() else {
+                    throw LocalCoachFailure.message("Unverified source citation")
+                }
+                let proposed = input.citations.map { LocalCoachReference(page: $0.page, reason: $0.quote, quote: $0.quote) }
+                // Validate each quote before deduplicating display pages.
+                guard proposed.allSatisfy({ material.validatedReferences([$0]).count == 1 }), generation == id else {
+                    return NativeVoiceToolResult(output: "{\"ok\":false,\"error\":\"Unverified source citation\"}", images: [])
+                }
+                sourceReferences = material.validatedReferences(proposed)
+                sourcePassages = sourceReferences.compactMap { reference in
+                    material.pages.first(where: { $0.page == reference.page }).map {
+                        LocalSourceResult.Passage(page: $0.page, title: reference.quote ?? material.title, text: $0.text, image: "", imageData: nil)
+                    }
+                }
+                struct Confirmed: Encodable { let ok = true; let citations: [LocalCoachReference] }
+                return NativeVoiceToolResult(output: String(data: try JSONEncoder().encode(Confirmed(citations: sourceReferences)), encoding: .utf8) ?? "{}", images: [])
             case "lookup_source":
                 var query = try JSONDecoder().decode(LocalSourceQuery.self, from: arguments)
                 // The model may not choose another session's source or default to the bundled demo.
@@ -315,11 +348,12 @@ final class CoachConversation {
                         .init(page: $0.page, title: material.title, text: $0.text, image: "", imageData: nil)
                     }, note: "Extracted from the PDF attached to this session. Cite its page numbers.")
                 sourcePassages = result.passages
-                sourceReferences = result.passages.map { LocalCoachReference(page: $0.page, reason: $0.title) }
-                let images = result.passages.compactMap(\.imageData)
+                let images = result.passages.first.flatMap { model.sourcePageImage($0.page) }.map { [$0] } ?? []
                 for i in result.passages.indices { result.passages[i].imageData = nil }
                 let data = try JSONEncoder().encode(result)
-                return NativeVoiceToolResult(output: "SOURCE PAGES (not learner drawing): " + (String(data: data, encoding: .utf8) ?? "{}"), images: images)
+                return NativeVoiceToolResult(output: "SOURCE PAGES (not learner drawing). Attached image, if any, is physical PDF page \(result.passages.first?.page ?? 1): " + (String(data: data, encoding: .utf8) ?? "{}"), images: images)
+            case "submit_review_answer":
+                return NativeVoiceToolResult(output: realtime.onReviewAnswer?(arguments, callID) ?? "{\"ok\":false}", images: [])
             case "apply_map_command":
                 guard !localToolCalls.contains(callID) else { throw LocalCoachFailure.message("Duplicate command; nothing changed.") }
                 localToolCalls.insert(callID)

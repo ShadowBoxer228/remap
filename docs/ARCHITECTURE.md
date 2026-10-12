@@ -19,8 +19,8 @@ source documents remain useful when cloud services are unavailable.
 validate the batch before committing one undoable change. A stale revision or
 invalid operation must not leave a partially changed map.
 
-PDF context retains actual page numbers. Retrieval selects bounded excerpts;
-typed references are limited to the supplied pages and link back to the document. Source
+PDF context retains actual page numbers. Retrieval selects bounded excerpts and may attach a relevant page image to preserve visual relationships in tables;
+references are checked against the current document before opening a page. Source
 text is evidence for conversation, not authority to change app behavior.
 
 ## Gateway and providers

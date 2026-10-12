@@ -11,10 +11,15 @@ struct CoachDock: View {
     var body: some View {
         @Bindable var conversation: CoachConversation = model.conversation
         VStack(spacing: 8) {
-            if model.session.usesLocalCoach && !conversation.sourceReferences.isEmpty {
+            if model.session.usesPDFCoach && !conversation.sourceReferences.isEmpty {
                 HStack {
                     ForEach(conversation.sourceReferences) { reference in
-                        Button("Page \(reference.page)") { conversation.openSource(page: reference.page) }
+                        Button { conversation.openSource(page: reference.page) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Page \(reference.page)")
+                                if let quote = reference.quote { Text(quote).font(.caption2).lineLimit(2) }
+                            }
+                        }
                             .remapButtonStyle()
                             .accessibilityHint(reference.reason)
                     }
@@ -84,8 +89,9 @@ private struct CoachLauncherStyle: ButtonStyle {
 
 /// Rendering-only chat; the draft and history are owned by the study session.
 struct CoachChatCard: View {
-    var messages: [CoachSession.Message]
-    var replies: [String]
+    @Bindable var coach: CoachSession
+    private var messages: [CoachSession.Message] { coach.messages }
+    private var replies: [String] { coach.replies }
     @Binding var draft: String
     var status: String
     var thinking: Bool

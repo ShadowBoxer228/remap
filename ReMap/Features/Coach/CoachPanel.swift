@@ -12,7 +12,7 @@ struct CoachPanel: View {
     var body: some View {
         let conversation: CoachConversation = model.conversation
         if conversation.presentation == .chat {
-            CoachChatCard(messages: coach.messages, replies: coach.replies, draft: $draft,
+            CoachChatCard(coach: coach, draft: $draft,
                           status: statusLine, thinking: coach.isThinking || conversation.activity == .thinking,
                           width: width, maxHeight: maxHeight,
                           actionSummary: conversation.lastActionSummary,

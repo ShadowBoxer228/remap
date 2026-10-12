@@ -29,7 +29,7 @@ struct VoiceLifecycleTests {
         let voice = RealtimeVoiceSession(requestPermission: { true }, fetchToken: { _ in tokens += 1; throw CoachGatewayError.limit })
         await voice.connect(conversation: true)
         #expect(tokens == 1)
-        if case .unavailable(let reason) = voice.state { #expect(reason.contains("limit")) }
+        if case .unavailable(let reason) = voice.state { #expect(reason == CoachGatewayError.limit.localizedDescription) }
         else { Issue.record("Quota failure must be explicit") }
         #expect(!voice.isConnected && !voice.isMicrophoneActive)
         voice.shutDown()
@@ -142,7 +142,24 @@ struct VoiceLifecycleTests {
         failing.send("Try another question")
         await failing.waitForPendingReply()
         #expect(failing.activity == .idle)
-        #expect(model.coach.messages.last?.text.contains("limit") == true)
+        #expect(model.coach.messages.last?.text == CoachGatewayError.limit.localizedDescription)
+    }
+
+    @Test("PDF chat completes and exposes a verified page pointer")
+    func pdfTextCompletion() async throws {
+        let model = model()
+        let material = NativeSourceMaterial(id: "pdf-" + String(repeating: "a", count: 64), title: "Evidence", pages: [.init(page: 7, text: "Instruction fine-tuning")])
+        let text = String(data: try JSONEncoder().encode(material), encoding: .utf8)!
+        model.update { $0.source = SourceInfo(kind: .pdf, name: "Evidence", text: text, sourceId: material.id, pageCount: 7) }
+        let token = SuspendedVoiceValue<Data>()
+        let conversation = CoachConversation(model: model, requestPDFText: { _ in await token.value() })
+        conversation.send("What is instruction fine-tuning?")
+        await token.waitForRequest()
+        #expect(conversation.activity == .thinking)
+        token.resume(Data(#"{"message":"Read the heading on page 7. What do you notice? [p.7]","references":[{"page":7,"reason":"Heading","quote":"Instruction fine-tuning"}],"command":null}"#.utf8))
+        await conversation.waitForPendingReply()
+        #expect(conversation.activity == .idle)
+        #expect(conversation.sourceReferences.map(\.page) == [7])
     }
 
     @Test("Full current-session history stays visible while only bounded context is sent")

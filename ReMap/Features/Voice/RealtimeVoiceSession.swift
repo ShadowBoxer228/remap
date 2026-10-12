@@ -28,7 +28,7 @@ final class RealtimeVoiceSession {
     /// A local session opts into the Mac-hosted engine; nil retains the designer gateway.
     var localTokenBody: Data?
     var onTool: ((String, Data, String) async -> NativeVoiceToolResult)?
-    var onContext: (() -> (text: String, image: String?))?
+    var onContext: (() -> (text: String, images: [String]))?
     @ObservationIgnored private var localLeaseID: String?
     @ObservationIgnored private var toolTask: Task<Void, Never>?
     @ObservationIgnored private var toolRounds = 0
@@ -174,8 +174,8 @@ final class RealtimeVoiceSession {
                     self.fail()
                 }
             }
-            if requestedLocalBody != nil {
-                let maxSeconds = min(300, max(1, token.maxSeconds ?? 300))
+            // Only an explicit server lease ends the call; there is no client-side time limit.
+            if requestedLocalBody != nil, let maxSeconds = token.maxSeconds, maxSeconds > 0 {
                 expiryTask = Task { [weak self] in
                     try? await Task.sleep(for: .seconds(maxSeconds))
                     guard !Task.isCancelled, let self, self.generation == id else { return }
@@ -198,6 +198,7 @@ final class RealtimeVoiceSession {
             pendingSpeech = text; return
         }
         interrupt()
+        responseAttempts = 0
         guard reserveResponse() else { return }
         let clean = String(text.replacingOccurrences(of: "*", with: "").prefix(2000))
         responseActive = true
@@ -216,14 +217,15 @@ final class RealtimeVoiceSession {
     }
 
     /// Starts an audio response to the latest completed student turn and current board.
-    func respond(context: String) {
+    func respond(context: String, textInput: String? = nil) {
         guard isReady, isConversational else { return }
         interrupt()
-        toolRounds = 0
+        toolRounds = 0; responseAttempts = 0
+        if let textInput, !textInput.isEmpty { sendContext(text: textInput, images: []) }
         let current = onContext?()
         let text = [context, current?.text].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n\n")
         // The audio item already contains the student's request. This item adds map state only.
-        sendContext(text: text, images: current?.image.map { [$0] } ?? [])
+        sendContext(text: text, images: current?.images ?? [])
         beginConversationResponse(allowTools: true)
     }
 
@@ -238,10 +240,13 @@ final class RealtimeVoiceSession {
               "tool_choice": allowTools ? "auto" : "none"]], forTurn: turn)
     }
 
+    /// Stops a runaway tool/response loop inside ONE learner turn. Conversations themselves have
+    /// no lifetime limit: the count resets on every new learner turn.
     private func reserveResponse() -> Bool {
-        guard responseAttempts < 60 else {
-            shutDown()
-            state = .unavailable(String(localized: "Voice session limit reached. Reopen voice mode to continue."))
+        guard responseAttempts < 12 else {
+            voiceLog.error("response loop stopped for this turn")
+            responseActive = false; acceptingAudio = false
+            state = isConversational && !microphoneMuted ? .listening : .idle
             return false
         }
         responseAttempts += 1

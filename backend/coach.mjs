@@ -70,13 +70,13 @@ export async function infer(input, key, Socket = WebSocket, prepared = null) {
       socket.close();
       if (error) reject(error); else resolve(result);
     };
-    const timer = setTimeout(() => { finish(new ModelError('response_timeout')); socket.terminate(); }, 20000);
+    const timer = setTimeout(() => { finish(new ModelError('response_timeout')); socket.terminate(); }, payload.responseTimeoutMs ?? 20000);
     socket.on('open', () => {
       socket.send(JSON.stringify({ type: 'session.update', session: {
         type: 'realtime', instructions: payload.instructions, output_modalities: ['text'],
         max_output_tokens: payload.max_output_tokens,
-        tools: input.operation === 'judge' ? [VERDICT_TOOL] : input.operation === 'conversation' ? [CONVERSATION_TOOL] : [],
-        tool_choice: input.operation === 'question' ? 'none' : { type: 'function', name: input.operation === 'judge' ? 'record_verdict' : 'respond_to_student' },
+        tools: payload.tools ?? (input.operation === 'judge' ? [VERDICT_TOOL] : input.operation === 'conversation' ? [CONVERSATION_TOOL] : []),
+        tool_choice: input.operation === 'question' ? 'none' : { type: 'function', name: payload.functionName ?? (input.operation === 'judge' ? 'record_verdict' : 'respond_to_student') },
         audio: { input: { turn_detection: null } }
       } }));
     });
@@ -87,7 +87,9 @@ export async function infer(input, key, Socket = WebSocket, prepared = null) {
         if (event.type === 'session.updated' && !submitted) {
           submitted = true;
           socket.send(JSON.stringify({ type: 'conversation.item.create', item: {
-            type: 'message', role: 'user', content: [{ type: 'input_text', text: payload.prompt }, ...(payload.image ? [{type:'input_image',image_url:payload.image}] : [])]
+            type: 'message', role: 'user', content: [{ type: 'input_text', text: payload.prompt },
+              ...(payload.sourceImages ?? []).flatMap(i => [{type:'input_text',text:`SOURCE PDF PAGE ${i.page}: use its visual layout for tables and diagrams; the text excerpts supply exact quote anchors.`},{type:'input_image',image_url:i.dataURL}]),
+              ...(payload.image ? [{type:'input_text',text:'LEARNER MAP and Pencil ink (not PDF evidence)'},{type:'input_image',image_url:payload.image}] : [])]
           } }));
           socket.send(JSON.stringify({ type: 'response.create', response: { output_modalities: ['text'] } }));
         } else if (event.type === 'response.done') {
@@ -96,14 +98,14 @@ export async function infer(input, key, Socket = WebSocket, prepared = null) {
           let output;
           if (input.operation !== 'question') {
             const calls = items.filter(i => i.type === 'function_call');
-            const name = input.operation === 'judge' ? 'record_verdict' : 'respond_to_student';
+            const name = payload.functionName ?? (input.operation === 'judge' ? 'record_verdict' : 'respond_to_student');
             if (calls.length !== 1 || calls[0].name !== name) throw new ModelError('invalid_verdict_call');
             output = calls[0].arguments;
           } else {
             output = items.flatMap(i => i.content ?? [])
               .filter(c => c.type === 'text' || c.type === 'output_text').map(c => c.text).join('');
           }
-          try { finish(null, parseReply(input.operation, { output })); }
+          try { finish(null, payload.parseOutput ? payload.parseOutput(output) : parseReply(input.operation, { output })); }
           catch { throw new ModelError('invalid_' + input.operation + '_output'); }
         } else if (event.type === 'error') { throw new ModelError(event.error?.code ?? 'realtime_error'); }
       } catch (error) { finish(error); }

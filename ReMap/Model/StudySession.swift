@@ -66,7 +66,7 @@ nonisolated struct SourceInfo: Codable, Equatable, Sendable {
     /// Registered backend identity; optional fields preserve older saved sessions.
     var sourceId: String? = nil
     var pageCount: Int? = nil
-    /// Set when this PDF was imported or re-uploaded for the learning-coach engine; nil keeps the cloud coach.
+    /// Set when this PDF was imported or re-uploaded for the learning-coach engine; nil keeps the legacy learning workflow.
     var usesLearningEngine: Bool? = nil
 }
 

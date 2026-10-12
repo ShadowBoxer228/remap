@@ -3,7 +3,7 @@ import PDFKit
 import UIKit
 
 /// Turns a study source into a list of headlines for priming.
-/// PDFs register with the connected engine; other legacy source types retain local extraction.
+/// New PDFs use OpenAI to select 6–24 concepts from locally extracted source text.
 protocol SourceIngesting {
     func headlines(for source: SourceInfo) async throws -> [Headline]
     func ingest(_ source: SourceInfo) async throws -> SourceIngestionResult
@@ -46,22 +46,15 @@ struct LocalSourceIngestor: SourceIngesting {
         }
         guard let name = source.fileName else { throw IngestionError.unreadablePDF }
         let url = SessionStore.sourcesDirectory.appending(path: name)
-        return try await Task.detached(priority: .userInitiated) {
-            let material = try NativeSourceMaterial.read(url: url, title: source.name)
-            var headings = try? await Self.fromPDF(at: url)
-            if headings?.isEmpty != false {
-                headings = material.pages.flatMap { page in
-                    TextHeadlineExtractor.headlines(from: page.text).prefix(2).map {
-                        Headline(text: $0.text, page: page.page)
-                    }
-                }
-            }
-            let encoded = try JSONEncoder().encode(material)
-            return SourceIngestionResult(headlines: Array((headings ?? []).prefix(40)),
-                sourceId: material.id, pageCount: material.pages.count,
-                warnings: material.pages.allSatisfy { $0.text.isEmpty } ? ["No readable text found. Add keywords manually; the original PDF is preserved."] : [],
-                sourceText: String(data: encoded, encoding: .utf8))
+        let material = try await Task.detached(priority: .userInitiated) {
+            try NativeSourceMaterial.read(url: url, title: source.name)
         }.value
+        try Task.checkCancellation()
+        let headings = try await SourceHeadlineGenerator.headlines(from: material)
+        try Task.checkCancellation()
+        let encoded = try JSONEncoder().encode(material)
+        return SourceIngestionResult(headlines: headings, sourceId: material.id, pageCount: material.pages.count,
+            warnings: [], sourceText: String(data: encoded, encoding: .utf8))
     }
 
     func headlines(for source: SourceInfo) async throws -> [Headline] {

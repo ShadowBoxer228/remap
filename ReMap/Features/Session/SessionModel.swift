@@ -251,7 +251,8 @@ final class SessionModel {
     func undo() {
         guard let previous = undoStack.popLast() else { return }
         redoStack.append(session.map)
-        update { $0.map = previous }
+        let sketch = session.map.sketch
+        update { $0.map = previous; $0.map.sketch = sketch }
         selection = .none
         coach.mapDidChange()
     }
@@ -259,7 +260,8 @@ final class SessionModel {
     func redo() {
         guard let next = redoStack.popLast() else { return }
         undoStack.append(session.map)
-        update { $0.map = next }
+        let sketch = session.map.sketch
+        update { $0.map = next; $0.map.sketch = sketch }
         selection = .none
         coach.mapDidChange()
     }
