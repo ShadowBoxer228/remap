@@ -12,6 +12,10 @@ extension SessionModel {
     /// Entering this workspace does not assert that the map passed every review rule.
     func openMindMap() {
         guard session.phase >= .check, !map.nodes.isEmpty else { return }
+        if session.usesLocalCoach && !session.missingBackboneKeywords.isEmpty {
+            coach.say("Place every committed Backbone keyword first. Other structural suggestions can wait.")
+            return
+        }
         coach.pauseReview()
         coach.replies = []
         conversation.prepareForPhaseChange()

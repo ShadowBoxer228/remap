@@ -113,9 +113,7 @@ struct LibraryView: View {
 
     private var header: some View {
         HStack(alignment: .center) {
-            Text(verbatim: "ReMap")
-                .font(TypeScale.display(36))
-                .foregroundStyle(Palette.ink)
+            ReMapWordmark(size: 36)
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             Menu {
@@ -140,7 +138,7 @@ struct LibraryView: View {
                 .padding(12)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Try an example").font(TypeScale.heading(22)).foregroundStyle(Palette.ink)
-                Text("Endocrine basics").font(TypeScale.hand(16)).foregroundStyle(Palette.ink2)
+                Text(TrainingLLMContent.title).font(TypeScale.hand(16)).foregroundStyle(Palette.ink2)
             }
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
             .padding(.horizontal, 22).padding(.bottom, 18)

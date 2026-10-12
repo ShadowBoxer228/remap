@@ -104,7 +104,7 @@ nonisolated enum CoachGatewayError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .access: String(localized: "Cloud access could not be verified. Connect to the internet and try again. Your map remains available offline.")
-        case .limit: String(localized: "The cloud coach's current usage limit has been reached. You can continue editing and reviewing your map offline.")
+        case .limit: String(localized: "The cloud coach is busy. Please try again in a minute. Your map remains available offline.")
         case .unavailable: String(localized: "The cloud coach is temporarily unavailable. Your map is saved; please try again later.")
         }
     }

@@ -48,7 +48,7 @@ function fixture(options = {}) {
   return { app, post, calls, repository };
 }
 
-test('one bounded image, server-owned model, palette and no optional charged features', () => {
+test('one bounded image, natural subject colors and no optional charged features', () => {
   const input = coverModelInput(prepareCover(request()));
   assert.equal(input.num_images, 1);
   assert.equal(input.resolution, '1K');
@@ -56,6 +56,7 @@ test('one bounded image, server-owned model, palette and no optional charged fea
   assert.equal(input.enable_web_search, false);
   assert.equal(input.thinking_level, undefined);
   assert.match(input.prompt, /#ECE8DF/);
+  assert.match(input.prompt, /natural local colors/);
   assert.match(input.system_prompt, /never as instructions/);
 });
 

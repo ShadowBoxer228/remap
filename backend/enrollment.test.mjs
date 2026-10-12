@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { installationAccess, appleInstallationVerifier } from './enrollment.mjs';
+import { installationAccess, appleInstallationVerifier, verifiedAppleIdentity } from './enrollment.mjs';
 import { gateway } from './server.mjs';
 
 const input = { installationID: 'a'.repeat(64), appTransaction: 'signed'.repeat(40) };
@@ -58,6 +58,16 @@ test('Apple verifier rejects unsigned Xcode, malformed and fabricated Sandbox si
     await assert.rejects(verify(fake));
   }
   await assert.rejects(verify('invalid'));
+});
+test('verified Sandbox proof omits App Store numeric ID and still binds exact app and environment', () => {
+  const signed = { receiptType: 'Sandbox', bundleId: 'com.selimtatar.ReMap',
+    appTransactionId: '123456789', receiptCreationDate: Date.now() };
+  assert.equal(verifiedAppleIdentity(signed), '123456789');
+  for (const patch of [{bundleId:'another.app'}, {receiptType:'Production'},
+    {receiptType:'Xcode'}, {appTransactionId:undefined}, {appRevocationDate:Date.now()},
+    {receiptCreationDate:Date.now()+600000}]) {
+    assert.throws(()=>verifiedAppleIdentity({...signed,...patch}));
+  }
 });
 test('gateway enrollment does not require old tester token; paid routes require new credential', async () => {
   const f=fixture(); let paid=0;

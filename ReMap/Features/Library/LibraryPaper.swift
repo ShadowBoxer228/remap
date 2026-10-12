@@ -98,16 +98,17 @@ struct LibraryBackdrop: View {
         GeometryReader { geometry in
             ZStack(alignment: .bottomTrailing) {
                 PaperBackground()
-                Image("galata_tower").resizable().scaledToFit()
-                    .frame(width: min(250, geometry.size.width * 0.28))
-                    .rotationEffect(.degrees(-9))
-                    .opacity(0.15)
-                    .offset(x: shown ? 100 : 125, y: 70)
-                Image("backdrop_istanbul").resizable().scaledToFit()
-                    .frame(width: 360).opacity(0.12)
-                    .rotationEffect(.degrees(8))
+                LibraryStudyFragment(isMap: true)
+                    .frame(width: 350, height: 270)
+                    .rotationEffect(.degrees(-11))
+                    .opacity(0.38)
+                    .offset(x: shown || reduceMotion ? 132 : 157, y: 88)
+                LibraryStudyFragment(isMap: false)
+                    .frame(width: 280, height: 230)
+                    .opacity(0.30)
+                    .rotationEffect(.degrees(13))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .offset(x: shown ? -220 : -245, y: -70)
+                    .offset(x: shown || reduceMotion ? -172 : -197, y: -112)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .clipped()
@@ -117,6 +118,69 @@ struct LibraryBackdrop: View {
         .accessibilityHidden(true)
         .onAppear {
             withAnimation(reduceMotion ? nil : .stopMotion(duration: 0.5, fps: 10)) { shown = true }
+        }
+    }
+}
+
+/// Quiet remnants of studying at the page edges, drawn once without an animation clock.
+private struct LibraryStudyFragment: View {
+    var isMap: Bool
+
+    var body: some View {
+        ZStack {
+            LibraryPaperShape(seed: isMap ? 31 : 47)
+                .fill(Palette.surface)
+                .shadow(color: Palette.ink.opacity(0.08), radius: 1, x: 0, y: 2)
+            Canvas { context, size in
+                func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+                    CGPoint(x: x * size.width, y: y * size.height)
+                }
+                let pencil = GraphicsContext.Shading.color(Palette.ink2.opacity(0.65))
+                let stroke = StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round)
+                if isMap {
+                    let centers = [point(0.22, 0.30), point(0.62, 0.23),
+                                   point(0.47, 0.61), point(0.81, 0.76)]
+                    for (from, to) in [(0, 1), (0, 2), (1, 2), (2, 3)] {
+                        var line = Path()
+                        line.move(to: centers[from])
+                        let a = centers[from], b = centers[to]
+                        line.addQuadCurve(to: b, control: CGPoint(x: (a.x + b.x) / 2 - 12,
+                                                                  y: (a.y + b.y) / 2 + 14))
+                        context.stroke(line, with: pencil, style: stroke)
+                    }
+                    for (index, center) in centers.enumerated() {
+                        let rect = CGRect(x: center.x - 34, y: center.y - 18, width: 68, height: 36)
+                        let paper = LibraryPaperShape(seed: Double(index + 20)).path(in: rect)
+                        context.fill(paper, with: .color(index == 0 ? Palette.butter : Palette.surface))
+                        context.stroke(paper, with: pencil, style: stroke)
+                        var marks = Path()
+                        marks.move(to: CGPoint(x: rect.minX + 13, y: rect.midY - 4))
+                        marks.addLine(to: CGPoint(x: rect.maxX - 12, y: rect.midY - 5))
+                        marks.move(to: CGPoint(x: rect.minX + 13, y: rect.midY + 5))
+                        marks.addLine(to: CGPoint(x: rect.maxX - 22, y: rect.midY + 4))
+                        context.stroke(marks, with: pencil, style: stroke)
+                    }
+                } else {
+                    let highlight = CGRect(x: size.width * 0.16, y: size.height * 0.21,
+                                           width: size.width * 0.55, height: 18)
+                    context.fill(LibraryPaperShape(seed: 8).path(in: highlight), with: .color(Palette.butter))
+                    for row in 0..<4 {
+                        let y = 0.26 + CGFloat(row) * 0.15
+                        var line = Path()
+                        line.move(to: point(0.19, y))
+                        line.addQuadCurve(to: point(row == 3 ? 0.55 : 0.78, y - 0.012),
+                                          control: point(0.43, y + 0.008))
+                        context.stroke(line, with: pencil, style: stroke)
+                    }
+                    var circle = Path()
+                    circle.addEllipse(in: CGRect(x: size.width * 0.63, y: size.height * 0.66,
+                                                 width: 47, height: 32))
+                    context.stroke(circle, with: .color(Palette.oliveDeep.opacity(0.65)), style: stroke)
+                }
+            }
+            Image("texture_paper").resizable(resizingMode: .tile)
+                .blendMode(.multiply).opacity(0.15)
+                .clipShape(LibraryPaperShape(seed: isMap ? 31 : 47))
         }
     }
 }

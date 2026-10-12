@@ -14,7 +14,9 @@ struct CanvasScreen: View {
     @State private var keyboardIsVisible = false
     @State private var awaitingNodeMeasurements = true
     @State private var previousHasTopics = false
-    @State private var previousPanelOpen = false
+    /// Paper hidden under the floating coach, in workspace coordinates. Only used to keep
+    /// new ideas and explicit Fit in sight; it never moves the camera on its own.
+    @State private var coachObscured: CGRect = .zero
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let worldSize = CGSize(width: 4000, height: 3000)
@@ -42,37 +44,23 @@ struct CanvasScreen: View {
 
     private func workspaceControls(size: CGSize) -> some View {
         let topicWidth: CGFloat = size.width >= 1000 ? 196 : (size.width >= 700 ? 176 : 148)
-        let voice = model.conversation.presentation == .voice
-        let voiceWidth: CGFloat = size.width < 700 ? 176 : 220
         let dockWidth: CGFloat = 340
-        let leftWidth = max(hasTopics ? topicWidth : 0, voice ? voiceWidth : 0)
-        let leadingWidth = leftWidth > 0 ? leftWidth + 16 : 0
-        // The borderless figure lives above the topics at the upper left. Text
-        // and inspectors use the right dock only when enough paper remains.
-        let sideDock = size.width >= 700 && size.width - 40 - leadingWidth - dockWidth - 16 >= 240
+        // The coach floats over the paper on the right. The measured map area never
+        // changes when it opens, so the board and the header stay exactly in place.
+        let sideDock = size.width >= 700
         return VStack(spacing: 12) {
             SessionHeader(model: model, onBack: onBack)
             HStack(alignment: .top, spacing: 16) {
-                if voice || hasTopics {
+                if hasTopics {
                     GeometryReader { left in
-                        let voiceHeight = min(size.width < 700 ? 240.0 : 300.0,
-                                              max(160, left.size.height - (hasTopics ? 80 : 0)))
-                        VStack(alignment: .leading, spacing: 12) {
-                            if voice {
-                                CoachDock(model: model, width: voiceWidth, maxHeight: voiceHeight)
-                                    .frame(height: voiceHeight, alignment: .top)
-                            }
-                            if hasTopics {
-                                CanvasTopicRail(model: model,
-                                                maxHeight: max(1, left.size.height - (voice ? voiceHeight + 12 : 0)),
-                                                onPlace: placeAtCenter)
-                                    .frame(width: topicWidth)
-                                    .transition(.opacity.animation(.easeOut(duration: 0.14)))
-                            }
+                        VStack(alignment: .leading, spacing: 0) {
+                            CanvasTopicRail(model: model, maxHeight: max(1, left.size.height), onPlace: placeAtCenter)
+                                .frame(width: topicWidth)
+                                .transition(.opacity.animation(.easeOut(duration: 0.14)))
                             Spacer(minLength: 0)
                         }
                     }
-                    .frame(width: leftWidth)
+                    .frame(width: topicWidth)
                 }
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -80,20 +68,15 @@ struct CanvasScreen: View {
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("workspace")) } action: { rect in
                         updateVisibleRect(rect)
                     }
-                if sideDock && (hasInspector || model.conversation.presentation == .chat) {
-                    GeometryReader { dock in
-                        sidePanel(width: dockWidth, height: dock.size.height, includeVoice: false)
-                    }
-                    .frame(width: dockWidth)
-                }
             }
             .frame(maxHeight: .infinity)
             // Card transitions animate locally; viewport geometry must not drift
             // through intermediate widths while the final topic leaves the rail.
             .animation(nil, value: hasTopics)
-            if !sideDock && (hasInspector || model.conversation.presentation == .chat) {
-                sidePanel(width: max(1, size.width - 40),
-                          height: min(280, size.height * 0.4), includeVoice: false)
+            .overlay {
+                GeometryReader { row in
+                    coachOverlay(row: row.size, fullWidth: size.width, sideDock: sideDock, dockWidth: dockWidth)
+                }
             }
             CanvasToolbar(model: model, onFit: {
                 followsMap = true
@@ -105,6 +88,60 @@ struct CanvasScreen: View {
         .padding(.top, 8)
         .padding(.bottom, 12)
         .frame(width: size.width, height: size.height)
+    }
+
+    /// Voice and chat share the right edge; on narrow layouts the chat rises from the bottom.
+    @ViewBuilder
+    private func coachOverlay(row: CGSize, fullWidth: CGFloat, sideDock: Bool, dockWidth: CGFloat) -> some View {
+        let voice = model.conversation.presentation == .voice
+        let chat = model.conversation.presentation == .chat
+        let voiceWidth: CGFloat = fullWidth < 700 ? 176 : 220
+        let voiceHeight = min(fullWidth < 700 ? 260.0 : 320.0, max(160, row.height))
+        let showsPanel = hasInspector || chat
+        let edge: Edge = sideDock || voice ? .trailing : .bottom
+        ZStack(alignment: sideDock ? .topTrailing : .bottomTrailing) {
+            Color.clear.allowsHitTesting(false)
+            if voice || (sideDock && showsPanel) {
+                VStack(alignment: .trailing, spacing: 12) {
+                    if voice {
+                        CoachDock(model: model, width: voiceWidth, maxHeight: voiceHeight)
+                            .frame(height: voiceHeight, alignment: .top)
+                    }
+                    if sideDock && showsPanel {
+                        sidePanel(width: dockWidth, height: max(1, row.height - (voice ? voiceHeight + 12 : 0)), includeVoice: false)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .transition(reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity))
+            }
+            if !sideDock && showsPanel && !voice {
+                sidePanel(width: max(1, fullWidth - 40), height: min(280, row.height * 0.6), includeVoice: false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .transition(reduceMotion ? .opacity : .move(edge: edge).combined(with: .opacity))
+            }
+        }
+        .onGeometryChange(for: CGRect.self) { proxy in
+            let origin = proxy.frame(in: .named("workspace")).origin
+            return coachFrame(row: row, fullWidth: fullWidth, sideDock: sideDock, dockWidth: dockWidth)
+                .offsetBy(dx: origin.x, dy: origin.y)
+        } action: { coachObscured = $0 }
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.38, bounce: 0.12),
+                   value: model.conversation.presentation)
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.38, bounce: 0.12), value: hasInspector)
+    }
+
+    /// The paper the coach currently covers, in the row's own coordinates.
+    private func coachFrame(row: CGSize, fullWidth: CGFloat, sideDock: Bool, dockWidth: CGFloat) -> CGRect {
+        let voice = model.conversation.presentation == .voice
+        let showsPanel = hasInspector || model.conversation.presentation == .chat
+        if sideDock || voice {
+            var width: CGFloat = voice ? (fullWidth < 700 ? 176 : 220) : 0
+            if sideDock && showsPanel { width = max(width, dockWidth) }
+            return width > 0 ? CGRect(x: row.width - width, y: 0, width: width, height: row.height) : .zero
+        }
+        guard showsPanel else { return .zero }
+        let height = min(280, row.height * 0.6)
+        return CGRect(x: 0, y: row.height - height, width: row.width, height: height)
     }
 
     private var paper: some View {
@@ -127,11 +164,11 @@ struct CanvasScreen: View {
             .clipped()
             .coordinateSpace(.named("canvas"))
             .simultaneousGesture(magnify)
-            .gesture(TwoFingerPan { delta in
+            .remapTwoFingerPan { delta in
                 followsMap = false
                 model.camera.offset.width += delta.width
                 model.camera.offset.height += delta.height
-            })
+            }
             .dropDestination(for: String.self) { items, location in
                 drop(items, at: location)
             }
@@ -281,7 +318,18 @@ struct CanvasScreen: View {
 
     private var hasInspector: Bool { model.selection.edgeID != nil }
     private var hasTopics: Bool { !model.session.unplacedHeadlines.isEmpty }
-    private var hasPanel: Bool { hasInspector || model.conversation.presentation != .collapsed }
+    /// The visible paper that the coach does not cover.
+    private var unobscuredRect: CGRect {
+        guard !coachObscured.isEmpty, !visibleRect.isEmpty else { return visibleRect }
+        var rect = visibleRect
+        let covered = coachObscured
+        if covered.minY > visibleRect.minY + 1 {
+            rect.size.height = max(120, covered.minY - rect.minY - 12)
+        } else {
+            rect.size.width = max(160, covered.minX - rect.minX - 12)
+        }
+        return rect
+    }
 
     @ViewBuilder
     private func sidePanel(width: CGFloat, height: CGFloat, includeVoice: Bool = true) -> some View {
@@ -368,7 +416,7 @@ struct CanvasScreen: View {
 
     private func placeAtCenter(_ headline: Headline) {
         guard model.session.unplacedHeadlines.contains(where: { $0.id == headline.id }) else { return }
-        let center = model.camera.toWorld(visibleRect.center)
+        let center = model.camera.toWorld(unobscuredRect.center)
         let jitter = CGPoint(x: CGFloat.random(in: -60...60), y: CGFloat.random(in: -40...40))
         withAnimation(reduceMotion ? .easeOut(duration: 0.14) : Motion.spawn) {
             model.addNode(headline.text, at: center + jitter, headlineID: headline.id)
@@ -376,7 +424,7 @@ struct CanvasScreen: View {
     }
 
     private func addAtCenter() {
-        let center = model.camera.toWorld(visibleRect.center)
+        let center = model.camera.toWorld(unobscuredRect.center)
         withAnimation(Motion.spawn) {
             let id = model.addNode(String(localized: "New idea"), at: center)
             model.selection = .node(id)
@@ -398,9 +446,7 @@ struct CanvasScreen: View {
         guard rect.width > 0, rect.height > 0 else { return }
         let previous = visibleRect
         let topicsChanged = previousHasTopics != hasTopics
-        let controlsChanged = previousPanelOpen != hasPanel
         previousHasTopics = hasTopics
-        previousPanelOpen = hasPanel
         visibleRect = rect
         if !model.camera.isPlaced || model.map.nodes.isEmpty {
             placeCamera()
@@ -408,7 +454,7 @@ struct CanvasScreen: View {
             // Removing the final topic only uncovers paper. Keep its drop point fixed.
             // Undo can restore the rail without moving the map either.
             return
-        } else if followsMap && !keyboardIsVisible && (controlsChanged || abs(rect.width - previous.width) > 1) {
+        } else if followsMap && !keyboardIsVisible && abs(rect.width - previous.width) > 1 {
             fit(animated: false)
         } else if !previous.isEmpty {
             // A height-only resize (including software-keyboard transitions) keeps the zoom.
@@ -440,13 +486,14 @@ struct CanvasScreen: View {
                                        width: nodeSize.width, height: nodeSize.height))
         }
         let apply = {
-            model.camera.fit(bounds, in: visibleRect)
+            model.camera.fit(bounds, in: unobscuredRect)
         }
         if animated { withAnimation(Motion.flow, apply) } else { apply() }
     }
 }
 
 /// Two-finger pan via UIKit, so it also works on top of the Pencil sketch layer.
+@available(iOS 18.0, *)
 struct TwoFingerPan: UIGestureRecognizerRepresentable {
     var onPan: (CGSize) -> Void
 

@@ -1,71 +1,95 @@
-# ReMap private Realtime gateway
+# ReMap gateway
 
-Hono on Vercel Node 24. Deployed project: `remap-coach` in
-`dotsaround1-1553s-projects`. Production origin:
-`https://remap-coach.vercel.app`.
+**A small authenticated boundary between the iPad and cloud AI.**
 
-Production environment variables:
+Hono on Node.js 24 and Vercel. The gateway owns provider credentials, installation
+enrollment, model instructions, request validation and usage accounting. The native
+client owns local documents and atomic map edits.
 
-- `OPENAI_API_KEY`: private OpenAI project key, stored only in Vercel.
-- `REMAP_ACCESS_TOKEN`: long random credential shared privately with internal testers.
-- `DATABASE_URL`: isolated Neon database for atomic quota counters and cover jobs.
-- `FAL_KEY`: optional fal.ai credential for topic covers, stored only in Vercel.
-
-The iPad sends `X-ReMap-Token`. `/health` is public and reports configuration
-presence, not provider availability. All routes return `Cache-Control: no-store`.
-
-- `POST /coach`: `{operation: "question"|"judge"|"conversation", context: "JSON string"}`.
-  Model/prompts/tools are server-owned; question/judge output is limited to 160 tokens,
-  conversation to 700. Uses one short Realtime WebSocket, with no automatic retry.
-  Conversation context is allowlisted: latest message, 10 recent messages, up to
-  60 nodes/80 edges, revision/selection, phase, bounded rule findings and truncation.
-  A separate review_answer field routes actual review answers to existing validation.
-- `POST /realtime/token`: `{}` selects legacy manual-turn voice;
-  `{profile:"conversation"}` selects semantic VAD with automatic responses disabled.
-  Returns only a 60-second `ek_` secret, expiry and model, never the primary key.
-  Both use PCM24k, Marin and `gpt-4o-mini-transcribe`. The conversation profile has
-  `apply_map_command` and `submit_review_answer`; the client validates atomic revision-checked
-  transactions. Native conversation responses use a 500-token limit.
-- `POST /covers` and `GET /covers/:id`: authenticated durable fal cover jobs.
-  See `covers-schema.sql`. These routes are deployed but need FAL_KEY before real generation. Missing configuration
-  fails closed; no automatic paid retry follows an uncertain submission.
-
-The overall body limit is 32 KiB; covers further limit bodies to 8 KiB.
-
-Neon `coach_quota` starts with 200 text calls and 10 voice-token issuances globally,
-plus 12 calls per minute per kind. One conditional SQL UPDATE reserves usage across
-concurrent Vercel instances. Upstream failures still consume a reservation. Caps
-persist across deployments; there is no automatic reset. `schema.sql` is safe to
-apply to this new isolated database and preserves existing counter values.
-
-This is for trusted internal testers. Shared credentials are revocable but not
-per-user authentication. An ephemeral bearer secret can configure its own Realtime
-session; issuance caps and app time limits are **not a dollar spend ceiling**.
-Before public launch add per-user auth, abuse controls, provider budget controls
-and server-enforced voice session lifecycle. Do not raise quotas silently.
+## Local setup
 
 ```sh
+cd backend
 npm ci
+cp .env.example .env.local
 npm test
-vercel project inspect --non-interactive
-vercel deploy --prod --yes --scope dotsaround1-1553s-projects
 ```
 
-Verify the resolved project before deployment. Vercel must be redeployed after
-changing environment variables. Never commit `.env*`, `.vercel/`, database URLs,
-keys or tester tokens. `.env.example` lists names only. Logs contain operational
-error codes, not prompts, audio or secrets. Vercel may retain normal request metadata.
+Fill `.env.local` with credentials for **your own** services. Never commit it.
+Install the Vercel CLI to use `npm run dev` or deploy the gateway.
 
-Validated on 2026-10-12 against the real deployed API: authentication, health,
-Socratic question, correct/incorrect calcium explanations, layout-only rejection,
-temporary secret, PCM speech generation, transcription loopback, semantic VAD,
-conversation explanation/command separation, response cancellation/truncation, and
-voice tool-result acknowledgement. Reports are
-under the root's ignored `build/QA/core-*`. Loopback is synthetic and does not prove
-physical iPad microphone/speaker performance.
+| Variable | Purpose |
+| :--- | :--- |
+| `OPENAI_API_KEY` | Server-side OpenAI credential |
+| `REMAP_ACCESS_TOKEN` | Development gateway credential; at least 32 characters |
+| `DATABASE_URL` | Postgres connection for usage, access and cover jobs |
+| `FAL_KEY` | Optional topic-cover generation credential |
+| `REMAP_ENROLLMENT_SECRET` | Private installation-token signing secret |
 
-Official protocol references:
+Review [schema.sql](schema.sql), [enrollment-schema.sql](enrollment-schema.sql) and
+[covers-schema.sql](covers-schema.sql) before initializing your database.
+[unlimited-usage.sql](unlimited-usage.sql) is an **optional policy change** that removes
+lifetime count limits; do not apply it blindly. Rate controls are not a dollar budget.
 
-- https://developers.openai.com/api/docs/guides/realtime-conversations
-- https://developers.openai.com/api/reference/resources/realtime/client-events
-- https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets/methods/create
+For an independently signed DEBUG app, the root
+[prepare_internal_library.py](../tools/prepare_internal_library.py) helper provisions
+a selected app data container with **your own HTTPS endpoint and token file**.
+Run it with `--help`. It does not start a simulator or put credentials in the binary.
+Cloning the app does not grant access to the maintainer's hosted service.
+
+## Routes
+
+Service routes require a credential via `Authorization: Bearer …` or `X-ReMap-Token`,
+except public health and the separately verified enrollment exchange.
+
+| Route | Responsibility |
+| :--- | :--- |
+| `GET /health` | Configuration presence; not full provider health |
+| `POST /access/enroll` | Verify an Apple installation proof and issue access |
+| `POST /coach` | Structured review and map conversation |
+| `POST /realtime/token` | Temporary access for the legacy voice path |
+| `POST /api/native/coach` | Source-grounded text coaching |
+| `POST /api/native/realtime/token` | Source-aware live voice and tool definitions |
+| `POST /api/native/command` | Validate a requested map command |
+| `POST /covers` · `GET /covers/:id` | Submit and inspect optional cover jobs |
+
+PDFKit extracts text and Vision OCR handles scanned pages on the iPad. Native
+requests carry bounded excerpts and, when relevant, a map image. Original PDFs
+remain on the device. Source lookup uses the current session's document. Typed page references are
+restricted to the supplied excerpt pages; page links are not proof that every
+statement is factually correct.
+
+## Security boundaries
+
+- Provider keys stay in the backend. The app gets an installation credential or
+  a short-lived voice credential, never the provider key.
+- Enrollment verifies Apple's certificate chain, signature, expected bundle and
+  supported environment. It is configured for **internal TestFlight / Sandbox**,
+  not general public production enrollment.
+- Authentication precedes native inference routes. Body limits, bounded context,
+  usage reservations and validation constrain input.
+- Map commands require explicit intent and a current revision. Server validation
+  is followed by native validation; malformed output must not partially edit a map.
+- Access records store pseudonymous identifiers and token hashes. Postgres does
+  not store complete PDFs, map content or audio.
+- Logs use operational error codes. Do not add credentials, prompts or audio.
+
+Apple root certificates in `certificates/` are public trust anchors, not signing
+keys. Test credentials are synthetic fixtures.
+
+## Tests and deployment
+
+`npm test` runs protocol tests without live paid provider calls. Live qualification
+is a separate, explicitly scoped operation. Deploy only to a project you control:
+
+```sh
+vercel link
+vercel env add OPENAI_API_KEY
+# Configure the remaining required variables in the selected project.
+vercel deploy --prod
+```
+
+Check the selected project and provider budgets before deployment. Protocol tests,
+an archive and an upload receipt do not establish fresh-install enrollment on a
+real iPad. See [architecture](../docs/ARCHITECTURE.md),
+[privacy](../docs/PRIVACY.md) and [security](../SECURITY.md).

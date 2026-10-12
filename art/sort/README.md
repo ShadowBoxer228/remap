@@ -11,9 +11,7 @@ for ReMap's native Sort screen on 2026-10-12.
 
 Exact prompts: [PROMPTS.md](PROMPTS.md). First reference was the app's
 `collect_reading` illustration. Topic and Detail additionally used the generated
-Backbone master to maintain the same print treatment. The original generated
-files remain in Codex's generated_images folder; these copies are the permanent
-workspace masters. Matching imagesets contain byte-identical PNGs.
+Backbone master to maintain the same print treatment. These source images are the permanent project masters. Matching imagesets contain byte-identical PNGs.
 
 Format: 1254 × 1254, 8-bit RGBA PNG with actual transparent pixels. UI display is
 72–88 pt, reduced to 52 pt in accessibility layout. Text is never embedded in the
@@ -26,4 +24,4 @@ Reduce Motion uses opacity only.
 
 Implementation is local to SortView and SortCollageComponents. Collect's shared
 HeadlineChip, session models, stored roles and all assignment/coach handlers are
-preserved. QA evidence lives in `../../build/QA/sort-collage/` (ignored build output).
+preserved.

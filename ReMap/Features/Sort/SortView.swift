@@ -5,7 +5,6 @@ struct SortView: View {
     @Bindable var model: SessionModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .body) private var wideLayoutMinimumHeight: CGFloat = 680
     @Namespace private var cards
     @State private var selected: UUID?
     @State private var targeted: SortPile?
@@ -22,7 +21,7 @@ struct SortView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let compact = geometry.size.width < 900 || geometry.size.height < wideLayoutMinimumHeight || typeSize.isAccessibilitySize
+            let compact = geometry.size.width < 900 || typeSize.isAccessibilitySize
             let inset: CGFloat = compact ? 20 : 32
             let width = geometry.size.width - inset * 2
             VStack(alignment: .leading, spacing: 18) {
@@ -38,25 +37,12 @@ struct SortView: View {
                         }
                     }
                 } else {
-                    HStack(alignment: .top, spacing: 28) {
-                        heading(compact: false)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        coachNote
-                            .frame(width: min(680, width * 0.58), alignment: .top)
-                    }
-                    HStack(alignment: .top, spacing: 22) {
-                        let trayWidth = min(380, width * 0.34)
-                        deck(width: trayWidth, compact: false)
-                            .frame(width: trayWidth)
-                        destinations(width: width - trayWidth - 22, compact: false)
-                    }
-                    .frame(maxHeight: .infinity)
+                    wideLayout(width: width, height: geometry.size.height - 16)
                 }
-                if !compact { footer(compact: false) }
             }
             .padding(.horizontal, inset)
-            .padding(.top, 12)
-            .padding(.bottom, 16)
+            .padding(.top, compact ? 12 : 8)
+            .padding(.bottom, compact ? 16 : 8)
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
         }
         // A scoped animation also survives the session store publishing an edit.
@@ -65,11 +51,35 @@ struct SortView: View {
         .animation(reduceMotion ? nil : Motion.snappy, value: targeted)
         .onAppear {
             if coachText.isEmpty {
-                coachText = String(localized: "Backbone means the 2–4 ideas everything else hangs on. Most headlines will be topics or details.")
+                coachText = model.session.usesLocalCoach ? "Choose 3–5 Backbone keywords. Most keywords will be Topics or Details." : String(localized: "Backbone means the 2–4 ideas everything else hangs on. Most headlines will be topics or details.")
             }
         }
         .onChange(of: model.session.headlines.map(\.id)) { _, ids in
             if let selected, !ids.contains(selected) { self.selected = nil }
+        }
+    }
+
+    private func wideLayout(width: CGFloat, height: CGFloat) -> some View {
+        // Reserve full note and footer heights; only the card trays scroll.
+        VStack(alignment: .leading, spacing: height < 700 ? 10 : 18) {
+            HStack(alignment: .top, spacing: 28) {
+                heading(compact: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                coachNote
+                    .frame(width: min(680, width * 0.58), alignment: .top)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(alignment: .top, spacing: 22) {
+                let trayWidth = min(440, width * 0.40)
+                deck(width: trayWidth, compact: false)
+                    .frame(width: trayWidth)
+                destinations(width: width - trayWidth - 22, compact: false)
+            }
+            .frame(maxHeight: .infinity)
+
+            footer(compact: false)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -90,7 +100,7 @@ struct SortView: View {
     }
 
     private func destinations(width: CGFloat, compact: Bool) -> some View {
-        VStack(spacing: 14) {
+        VStack(spacing: compact ? 14 : 8) {
             ForEach(HeadlineRole.allCases) { role in
                 bucket(role, width: width, compact: compact)
             }
@@ -100,7 +110,7 @@ struct SortView: View {
 
     private func deck(width: CGFloat, compact: Bool) -> some View {
         let isTarget = targeted == .unsorted
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: compact ? 10 : 8) {
             HStack(alignment: .firstTextBaseline) {
                 Spacer(minLength: 8)
                 countBadge(unsorted.count, tint: Palette.oliveDeep)
@@ -122,9 +132,9 @@ struct SortView: View {
                     .padding(.vertical, 32)
                     .transition(.opacity)
                 } else {
-                    FlowLayout(spacing: 10) {
+                    FlowLayout(spacing: compact ? 10 : 8) {
                         ForEach(unsorted) { headline in
-                            chip(headline, maxWidth: width - 56)
+                            chip(headline, maxWidth: width - (compact ? 56 : 44))
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -138,7 +148,7 @@ struct SortView: View {
                     .transition(.opacity)
             }
         }
-        .padding(20)
+        .padding(compact ? 20 : 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             SortPaperSurface(targeted: isTarget,
@@ -161,7 +171,7 @@ struct SortView: View {
         let isTarget = targeted == .role(role)
         let canPlace = selectedHeadline.map { $0.role != role } ?? false
         let tint = Palette.role(role)
-        let artSize: CGFloat = typeSize.isAccessibilitySize ? 52 : width < 500 ? 72 : 88
+        let artSize: CGFloat = typeSize.isAccessibilitySize ? 52 : (!compact || width < 500 ? 72 : 88)
         let inlineArt = width < 430 || typeSize.isAccessibilitySize
         let cardWidth = width - 44 - (inlineArt ? 0 : artSize + 14)
         return HStack(alignment: .top, spacing: 14) {
@@ -170,7 +180,7 @@ struct SortView: View {
                                 arrival: lastMove?.to == role ? lastMove?.token : nil)
                     .padding(.top, 4)
             }
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: compact ? 8 : 4) {
                 Button {
                     if let selected { assign(selected, to: role) }
                 } label: {
@@ -179,9 +189,9 @@ struct SortView: View {
                             SortRoleArtwork(role: role, size: artSize,
                                             arrival: lastMove?.to == role ? lastMove?.token : nil)
                         }
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: compact ? 4 : 2) {
                             SortRoleHeading(role: role, count: items.count,
-                                            warning: role == .backbone && items.count > MapRules.maxLinks)
+                                            warning: role == .backbone && items.count > (model.session.usesLocalCoach ? 5 : MapRules.maxLinks))
                             Text(role.hint)
                                 .font(.subheadline)
                                 .foregroundStyle(Palette.ink2)
@@ -199,7 +209,7 @@ struct SortView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        FlowLayout(spacing: 10) {
+                        FlowLayout(spacing: compact ? 10 : 8) {
                             ForEach(items) { headline in
                                 chip(headline, maxWidth: cardWidth)
                                     .id(headline.id)
@@ -230,12 +240,13 @@ struct SortView: View {
                         withAnimation(movement) { proxy.scrollTo(move.id, anchor: .bottom) }
                     }
                 }
-                .frame(minHeight: typeSize.isAccessibilitySize ? 140 : 50,
+                .frame(minHeight: typeSize.isAccessibilitySize ? 140 : (compact ? 50 : 58),
                        maxHeight: compact ? (typeSize.isAccessibilitySize ? 240 : 150) : .infinity)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: compact ? 170 : 126,
+        .padding(.horizontal, 16)
+        .padding(.vertical, compact ? 16 : 8)
+        .frame(maxWidth: .infinity, minHeight: compact ? 170 : 112,
                maxHeight: compact ? nil : .infinity, alignment: .topLeading)
         .background {
             SortPaperSurface(tint: tint, targeted: isTarget, available: canPlace,
@@ -347,10 +358,15 @@ struct SortView: View {
                     .accessibilityLabel(Text("Headlines sorted"))
             }
             if !compact { Spacer(minLength: 0) }
+            if model.session.usesLocalCoach && !model.session.canBeginBackbone {
+                Text("Label every keyword; choose 3–5 for Backbone.")
+                    .font(.caption).foregroundStyle(Palette.ink2)
+            }
             PrimaryButton(title: String(localized: "Draw the backbone"), systemImage: "arrow.right") {
                 model.advance(to: .backbone)
             }
-            .disabled(backboneCount == 0)
+            .disabled(backboneCount == 0 || !model.session.canBeginBackbone)
+            .accessibilityHint("Label every keyword and choose 3–5 Backbone ideas before drawing.")
         }
     }
 
@@ -380,8 +396,8 @@ struct SortView: View {
             selected = nil
         }
         if role == .backbone { challengeBackbone(id) }
-        if role == .backbone, backboneCount > MapRules.maxLinks {
-            coachText = String(localized: "That's \(backboneCount) backbone ideas. A backbone holds 2–4 — which of these could hang on another?")
+        if role == .backbone, backboneCount > (model.session.usesLocalCoach ? 5 : MapRules.maxLinks) {
+            coachText = model.session.usesLocalCoach ? "Choose 3–5 Backbone keywords. Keep the others as Topics or Details." : String(localized: "That's \(backboneCount) backbone ideas. A backbone holds 2–4 — which of these could hang on another?")
             coachReplies = []
         }
     }
@@ -402,6 +418,12 @@ struct SortView: View {
     }
 
     private func answer(_ reply: String) {
+        if model.session.usesLocalCoach {
+            model.conversation.openChat()
+            model.conversation.send("About this labeling question: \(coachText) My reasoning: \(reply)")
+            coachReplies = []
+            return
+        }
         let lowered = reply.lowercased()
         let text: String
         if lowered.contains("depends") || lowered.contains("do matters") {

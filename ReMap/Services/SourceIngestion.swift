@@ -3,9 +3,25 @@ import PDFKit
 import UIKit
 
 /// Turns a study source into a list of headlines for priming.
-/// Real on-device extraction today; the cloud backend will add YouTube transcripts and LLM cleanup.
+/// PDFs register with the connected engine; other legacy source types retain local extraction.
 protocol SourceIngesting {
     func headlines(for source: SourceInfo) async throws -> [Headline]
+    func ingest(_ source: SourceInfo) async throws -> SourceIngestionResult
+}
+
+struct SourceIngestionResult {
+    let headlines: [Headline]
+    let sourceId: String?
+    let pageCount: Int?
+    let warnings: [String]
+    var sourceText: String? = nil
+}
+
+extension SourceIngesting {
+    func ingest(_ source: SourceInfo) async throws -> SourceIngestionResult {
+        SourceIngestionResult(headlines: try await headlines(for: source), sourceId: source.sourceId,
+                              pageCount: source.pageCount, warnings: [])
+    }
 }
 
 nonisolated enum IngestionError: LocalizedError {
@@ -20,10 +36,38 @@ nonisolated enum IngestionError: LocalizedError {
     }
 }
 
+nonisolated private struct LocalPDFUploadRequest: Encodable { let name: String; let pdfBase64: String }
+
 struct LocalSourceIngestor: SourceIngesting {
+    func ingest(_ source: SourceInfo) async throws -> SourceIngestionResult {
+        guard source.kind == .pdf, source.usesLearningEngine == true else {
+            return SourceIngestionResult(headlines: try await headlines(for: source), sourceId: source.sourceId,
+                                         pageCount: source.pageCount, warnings: [])
+        }
+        guard let name = source.fileName else { throw IngestionError.unreadablePDF }
+        let url = SessionStore.sourcesDirectory.appending(path: name)
+        return try await Task.detached(priority: .userInitiated) {
+            let material = try NativeSourceMaterial.read(url: url, title: source.name)
+            var headings = try? await Self.fromPDF(at: url)
+            if headings?.isEmpty != false {
+                headings = material.pages.flatMap { page in
+                    TextHeadlineExtractor.headlines(from: page.text).prefix(2).map {
+                        Headline(text: $0.text, page: page.page)
+                    }
+                }
+            }
+            let encoded = try JSONEncoder().encode(material)
+            return SourceIngestionResult(headlines: Array((headings ?? []).prefix(40)),
+                sourceId: material.id, pageCount: material.pages.count,
+                warnings: material.pages.allSatisfy { $0.text.isEmpty } ? ["No readable text found. Add keywords manually; the original PDF is preserved."] : [],
+                sourceText: String(data: encoded, encoding: .utf8))
+        }.value
+    }
+
     func headlines(for source: SourceInfo) async throws -> [Headline] {
         switch source.kind {
         case .demo:
+            if source.name == "TrainingLLM.pdf" { return TrainingLLMContent.headlines() }
             if let url = Bundle.main.url(forResource: DemoContent.pdfName, withExtension: "pdf"),
                let extracted = try? await Self.fromPDF(at: url), !extracted.isEmpty {
                 return extracted

@@ -19,14 +19,16 @@ struct SessionFlowControls: View {
                     .padding(.horizontal, compact ? 6 : 10)
                     .frame(minHeight: 36)
             }
-            .buttonStyle(.glassProminent)
+            .remapButtonStyle(prominent: true)
             .tint(Palette.ink)
-            .disabled(model.map.nodes.isEmpty)
+            .disabled(model.map.nodes.isEmpty || (isReflecting && model.session.usesLocalCoach && !model.session.missingBackboneKeywords.isEmpty))
             .accessibilityIdentifier("session.flow.next")
             .accessibilityHint(Text(hint))
 
             if model.map.nodes.isEmpty {
                 status(String(localized: "Add an idea to continue"))
+            } else if isReflecting && model.session.usesLocalCoach && !model.session.missingBackboneKeywords.isEmpty {
+                status("Place \(model.session.missingBackboneKeywords.count) remaining Backbone keywords")
             } else if isReflecting || isMap {
                 if !findings.isEmpty {
                     status(String(localized: "\(findings.count) questions to revisit"))

@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import PencilKit
 
 nonisolated struct CoachMapAction: Codable, Equatable, Sendable {
     enum Kind: String, Codable, Sendable {
@@ -41,6 +42,25 @@ nonisolated struct CoachBoardSnapshot: Encodable {
     var phase: String = ""
     var canUndo: Bool = false
     var findings: [Issue] = []
+    /// Freehand Pencil marks that are not connections: circles, loose arrows, notes near topics.
+    var ink: [InkGeometry.Mark] = []
+    /// The learning-coach engine was validated against the original board fields only;
+    /// it sees Pencil ink through the rendered canvas image instead.
+    var localEngineShape = false
+
+    private enum CodingKeys: String, CodingKey {
+        case revision, title, nodes, edges, selectedNode, selectedEdge, truncated, phase, canUndo, findings, ink
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(revision, forKey: .revision); try c.encode(title, forKey: .title)
+        try c.encode(nodes, forKey: .nodes); try c.encode(edges, forKey: .edges)
+        try c.encodeIfPresent(selectedNode, forKey: .selectedNode); try c.encodeIfPresent(selectedEdge, forKey: .selectedEdge)
+        try c.encode(truncated, forKey: .truncated)
+        guard !localEngineShape else { return }
+        try c.encode(phase, forKey: .phase); try c.encode(canUndo, forKey: .canUndo); try c.encode(findings, forKey: .findings)
+        try c.encode(ink, forKey: .ink)
+    }
 }
 
 extension SessionModel {
@@ -60,7 +80,11 @@ extension SessionModel {
         let visibleEdges = Array((possibleEdges.filter { $0.id == selection.edgeID } + possibleEdges.filter { $0.id != selection.edgeID }).prefix(80))
         let edgeIDs = Set(visibleEdges.map(\.id))
         return CoachBoardSnapshot(revision: mapRevision, title: String(map.title.prefix(200)),
-            nodes: visible.map { .init(id: $0.id, label: String($0.label.prefix(200)), x: $0.position.x, y: $0.position.y, backbone: $0.isBackbone, group: $0.group) },
+            nodes: visible.map { node in
+                .init(id: node.id, label: String(node.label.prefix(200)), x: node.position.x, y: node.position.y,
+                      backbone: node.isBackbone || (session.usesLocalCoach && session.backboneKeywords.contains { $0.id == node.headlineID }),
+                      group: session.usesLocalCoach ? nil : node.group)
+            },
             edges: visibleEdges.map {
                 .init(id: $0.id, from: $0.from, to: $0.to, reason: String($0.reason.prefix(200)), directed: $0.isDirected)
             }, selectedNode: selection.nodeID.flatMap { ids.contains($0) ? $0 : nil },
@@ -70,12 +94,24 @@ extension SessionModel {
             findings: MapRules.findings(for: map).prefix(12).map {
                 .init(kind: $0.kind.rawValue, nodeIDs: Array($0.nodeIDs.filter { ids.contains($0) }.prefix(20)),
                       edgeIDs: Array($0.edgeIDs.filter { edgeIDs.contains($0) }.prefix(20)))
-            })
+            },
+            ink: map.sketch.flatMap { try? PKDrawing(data: $0) }.map { InkGeometry.marks(in: $0, nodes: visible) } ?? [],
+            localEngineShape: false)
     }
 
     /// Build a complete candidate first; any invalid operation rejects the entire transaction.
     func applyCoachCommand(_ command: CoachMapCommand, latestRequest: String) throws -> String {
         guard command.revision == mapRevision else { throw CoachCommandError.stale }
+        if session.usesLocalCoach {
+            guard Self.isExplicitEditRequest(latestRequest) else { throw CoachCommandError.invalid }
+            let protected = Set(session.backboneKeywords.map(\.id))
+            for action in command.operations {
+                if let id = action.id, let node = map.node(id), let keyword = node.headlineID, protected.contains(keyword),
+                   action.kind == .deleteNode || action.kind == .renameNode || (action.kind == .setBackbone && action.backbone == false) {
+                    throw LocalCoachFailure.message("That is a committed Backbone keyword. It stays required; you can move it or change its connections.")
+                }
+            }
+        }
         guard !latestRequest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               command.request.trimmingCharacters(in: .whitespacesAndNewlines) == latestRequest.trimmingCharacters(in: .whitespacesAndNewlines),
               !command.operations.isEmpty, command.operations.count <= 8 else { throw CoachCommandError.invalid }
@@ -94,7 +130,9 @@ extension SessionModel {
                 guard candidate.node(id) == nil else { throw CoachCommandError.invalid }
                 let center = candidate.nodes.isEmpty ? CGPoint(x: 2000, y: 1500) : candidate.bounds.center
                 let position = try Self.commandPoint(action, fallback: CGPoint(x: center.x + 180, y: center.y + CGFloat(candidate.nodes.count % 3) * 90))
-                var node = MapNode(label: label, position: position, isBackbone: action.backbone ?? false)
+                let matches = session.usesLocalCoach ? session.headlines.filter { $0.text.caseInsensitiveCompare(label) == .orderedSame } : []
+                let headline = matches.count == 1 ? matches.first : nil
+                var node = MapNode(label: label, position: position, isBackbone: headline?.role == .backbone || (action.backbone ?? false), headlineID: headline?.id)
                 node.id = id
                 candidate.nodes.append(node)
             case .renameNode:
@@ -107,7 +145,12 @@ extension SessionModel {
                 guard let from = action.from, let to = action.to, from != to,
                       candidate.node(from) != nil, candidate.node(to) != nil,
                       candidate.edge(between: from, and: to) == nil else { throw CoachCommandError.invalid }
-                candidate.edges.append(MapEdge(from: from, to: to, reason: String((action.reason ?? "").prefix(1200))))
+                var edge = MapEdge(from: from, to: to, reason: String((action.reason ?? "").prefix(1200)))
+                if let id = action.id {
+                    guard candidate.edgeIndex(of: id) == nil else { throw CoachCommandError.invalid }
+                    edge.id = id
+                }
+                candidate.edges.append(edge)
             case .deleteEdge:
                 guard let id = action.id, let index = candidate.edgeIndex(of: id) else { throw CoachCommandError.missing }
                 candidate.edges.remove(at: index)
@@ -156,6 +199,11 @@ extension SessionModel {
         if let highlights { point(at: highlights) }
         if !changed { return String(localized: "Highlighted the discussed ideas. Your map is unchanged.") }
         return String(localized: "Applied \(command.operations.count) map changes. Undo is available.")
+    }
+
+    static func isExplicitEditRequest(_ text: String) -> Bool {
+        let pattern = #"(?i)^\s*(?:(?:please|okay|ok)\s*[,!]?\s*)?(?:(?:can|could|would|will) you\s+(?:please\s+)?)?(?:move|connect|link|add|create|rename|remove|delete|tidy|arrange|rearrange|set|mark|change|draw)\b"#
+        return text.range(of: pattern, options: .regularExpression) != nil
     }
 
     private static func commandLabel(_ value: String?) throws -> String {

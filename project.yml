@@ -2,7 +2,7 @@ name: ReMap
 options:
   bundleIdPrefix: com.selimtatar
   deploymentTarget:
-    iOS: "26.0"
+    iOS: "17.0"
   defaultSourceDirectoryType: syncedFolder
   createIntermediateGroups: true
 settings:

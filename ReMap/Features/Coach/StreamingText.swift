@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Reveals glyphs one by one with a soft fade-and-rise, like the coach writing in real time.
+@available(iOS 18.0, *)
 nonisolated struct RevealRenderer: TextRenderer, Animatable {
     var shown: Double
     var softness: Double = 6
@@ -40,17 +41,30 @@ struct StreamingText: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        Group {
+            if #available(iOS 18.0, *) {
+                styledText.textRenderer(RevealRenderer(shown: reduceMotion ? 10_000 : shown))
+            } else {
+                ReMapLegacyStreamingText(text: attributed, color: color,
+                                        shown: reduceMotion ? 10_000 : shown)
+                    .font(font)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onAppear(perform: start)
+        .onChange(of: text) { _, _ in
+            shown = 0
+            start()
+        }
+    }
+
+    private var styledText: some View {
         Text(attributed)
             .font(font)
             .foregroundStyle(color)
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
-            .textRenderer(RevealRenderer(shown: reduceMotion ? 10_000 : shown))
-            .onAppear(perform: start)
-            .onChange(of: text) { _, _ in
-                shown = 0
-                start()
-            }
     }
 
     private var attributed: AttributedString {
@@ -84,7 +98,7 @@ struct CoachNote: View {
                     FlowLayout(spacing: 8) {
                         ForEach(replies, id: \.self) { reply in
                             Button(reply) { onReply(reply) }
-                                .buttonStyle(.glass)
+                                .remapButtonStyle()
                                 .font(.subheadline.weight(.medium))
                         }
                     }

@@ -26,6 +26,13 @@ final class AppModel {
 
     @discardableResult
     func createDemoSession() -> UUID {
+        createSession(title: TrainingLLMContent.title,
+                      source: SourceInfo(kind: .demo, name: "TrainingLLM.pdf"))
+    }
+
+    /// Original designer example, preserved for existing sessions and future use.
+    @discardableResult
+    func createEndocrineSession() -> UUID {
         createSession(title: DemoContent.title,
                       source: SourceInfo(kind: .demo, name: "\(DemoContent.pdfName).pdf"),
                       isDemo: true)
@@ -38,12 +45,12 @@ final class AppModel {
         let fileName = UUID().uuidString + ".pdf"
         try FileManager.default.copyItem(at: url, to: SessionStore.sourcesDirectory.appending(path: fileName))
         let title = url.deletingPathExtension().lastPathComponent
-        return createSession(title: title, source: SourceInfo(kind: .pdf, name: url.lastPathComponent, fileName: fileName))
+        return createSession(title: title, source: SourceInfo(kind: .pdf, name: url.lastPathComponent, fileName: fileName, usesLearningEngine: true))
     }
 
     func sourceURL(for session: StudySession) -> URL? {
         switch session.source.kind {
-        case .demo: Bundle.main.url(forResource: DemoContent.pdfName, withExtension: "pdf")
+        case .demo: Bundle.main.url(forResource: session.usesLocalCoach ? TrainingLLMContent.pdfName : DemoContent.pdfName, withExtension: "pdf")
         case .pdf: session.source.fileName.map { SessionStore.sourcesDirectory.appending(path: $0) }
         default: nil
         }

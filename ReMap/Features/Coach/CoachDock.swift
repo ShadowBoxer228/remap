@@ -10,7 +10,16 @@ struct CoachDock: View {
 
     var body: some View {
         @Bindable var conversation: CoachConversation = model.conversation
-        Group {
+        VStack(spacing: 8) {
+            if model.session.usesLocalCoach && !conversation.sourceReferences.isEmpty {
+                HStack {
+                    ForEach(conversation.sourceReferences) { reference in
+                        Button("Page \(reference.page)") { conversation.openSource(page: reference.page) }
+                            .remapButtonStyle()
+                            .accessibilityHint(reference.reason)
+                    }
+                }
+            }
             switch conversation.presentation {
             case .collapsed:
                 EmptyView()
@@ -22,6 +31,9 @@ struct CoachDock: View {
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: conversation.presentation)
+        .sheet(isPresented: $conversation.showingSource) {
+            TrainingSourceSheet(session: model.session, page: conversation.selectedSourcePage, passages: conversation.sourcePassages)
+        }
     }
 }
 
@@ -217,7 +229,7 @@ struct CoachChatCard: View {
             }
             .scrollIndicators(.hidden)
             .defaultScrollAnchor(.bottom)
-            .defaultScrollAnchor(.top, for: .alignment)
+            .remapChatAlignment { proxy.scrollTo("coach-bottom", anchor: .bottom) }
             .onChange(of: messages.last?.text) { _, _ in
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
                     proxy.scrollTo("coach-bottom", anchor: .bottom)
@@ -279,7 +291,7 @@ struct CoachVoiceCompanion: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var compact: Bool { width < 200 || maxHeight < 250 }
-    private var figureSize: CGFloat { min(compact ? 104 : 140, max(64, maxHeight - 144)) }
+    private var figureSize: CGFloat { min(compact ? 112 : 160, max(64, maxHeight - 144)) }
     private var captionText: String { error ?? (caption.isEmpty ? captionPlaceholder : caption) }
 
     private var orbState: VoiceSession.State {
@@ -306,9 +318,9 @@ struct CoachVoiceCompanion: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            VoiceOrb(state: orbState, level: level)
+            VoiceOrb(state: orbState, level: level, muted: muted)
                 .frame(width: figureSize, height: figureSize)
-                .padding(.vertical, 8)
+                .padding(.vertical, 14)
 
             Text(captionText)
                 .font(error == nil ? TypeScale.coach(compact ? 16 : 18) : .caption)
@@ -317,6 +329,8 @@ struct CoachVoiceCompanion: View {
                 .lineLimit(maxHeight < 220 ? 1 : 3)
                 .truncationMode(.head)
                 .frame(maxWidth: .infinity)
+                .contentTransition(.opacity)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: captionText)
                 .accessibilityLabel(captionText)
                 .accessibilityIdentifier("coach.captions")
 
@@ -343,6 +357,14 @@ struct CoachVoiceCompanion: View {
         }
         .frame(width: width)
         .frame(maxHeight: maxHeight, alignment: .top)
+        // A soft wash of paper keeps captions legible over busy content without a card.
+        .background {
+            RoundedRectangle(cornerRadius: 40, style: .continuous)
+                .fill(Palette.canvas.opacity(0.9))
+                .padding(-14)
+                .blur(radius: 16)
+                .allowsHitTesting(false)
+        }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Voice coach"))

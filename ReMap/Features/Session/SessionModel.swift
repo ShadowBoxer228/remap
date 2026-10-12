@@ -99,6 +99,7 @@ final class SessionModel {
         self.ingestor = ingestor
         self.coach = CoachSession(model: self)
         self.conversationStorage = CoachConversation(model: self)
+        if session.usesLocalCoach { self.coach.brain = LocalSessionCoachBrain(model: self) }
     }
 
     var map: MindMap { session.map }
@@ -116,6 +117,14 @@ final class SessionModel {
     }
 
     func advance(to phase: SessionPhase) {
+        if session.usesLocalCoach {
+            if phase > .collect && session.needsSourceUpload { return }
+            if phase >= .backbone && !session.canBeginBackbone { return }
+            if phase == .details && !session.missingBackboneKeywords.isEmpty {
+                coach.say("Place every committed Backbone keyword before opening the full map. Structural suggestions can wait.")
+                return
+            }
+        }
         update { s in
             s.phase = phase
             if s.reachedPhases[phase] == nil { s.reachedPhases[phase] = Date() }
@@ -133,20 +142,46 @@ final class SessionModel {
 
     // MARK: - Collect
 
+    /// Re-register a saved PDF against the current backend without replacing the learner's work.
+    func retryPDFUpload() async {
+        guard session.source.kind == .pdf, !isExtracting else { return }
+        conversation.close()
+        coach.pauseReview()
+        conversation.sourceReferences = []
+        conversation.sourcePassages = []
+        conversation.showingSource = false
+        update { s in
+            s.source.usesLearningEngine = true
+            s.source.sourceId = nil
+            s.source.pageCount = nil
+        }
+        await collectIfNeeded()
+    }
+
     func collectIfNeeded() async {
-        guard session.headlines.isEmpty, !isExtracting else { return }
+        guard (session.headlines.isEmpty || session.needsSourceUpload), !isExtracting else { return }
         isExtracting = true
+        extractionMessage = nil
         defer { isExtracting = false }
-        let started = Date.now
+        let originalSource = session.source
         do {
-            let headlines = try await ingestor.headlines(for: session.source)
-            // Let the "reading your source" moment breathe.
-            let elapsed = Date.now.timeIntervalSince(started)
-            if elapsed < 1.6 { try? await Task.sleep(for: .seconds(1.6 - elapsed)) }
-            update { $0.headlines = headlines }
-            if headlines.isEmpty {
+            let result = try await ingestor.ingest(originalSource)
+            try Task.checkCancellation()
+            guard session.source == originalSource else { return }
+            update { s in
+                s.source.sourceId = result.sourceId
+                s.source.pageCount = result.pageCount
+                if let text = result.sourceText { s.source.text = text }
+                // Retried uploads must not replace manually edited or previously collected keywords.
+                if s.headlines.isEmpty { s.headlines = result.headlines }
+            }
+            if session.usesLocalCoach { coach.brain = LocalSessionCoachBrain(model: self) }
+            if !result.warnings.isEmpty { extractionMessage = result.warnings.joined(separator: " ") }
+            else if session.headlines.isEmpty {
                 extractionMessage = String(localized: "No headlines found. Add the ones you notice while you skim.")
             }
+        } catch is CancellationError {
+            extractionMessage = "PDF preparation paused. Tap Retry PDF preparation to continue."
         } catch {
             extractionMessage = error.localizedDescription
         }
@@ -154,11 +189,12 @@ final class SessionModel {
 
     func addHeadline(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
+        guard !t.isEmpty, session.headlines.count < 40 else { return }
         update { $0.headlines.append(Headline(text: t)) }
     }
 
     func renameHeadline(_ id: UUID, to text: String) {
+        guard !isCommittedBackbone(id) else { return }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         update { s in
             guard let i = s.headlines.firstIndex(where: { $0.id == id }) else { return }
@@ -167,12 +203,21 @@ final class SessionModel {
     }
 
     func removeHeadline(_ id: UUID) {
+        guard !isCommittedBackbone(id) else { return }
         update { $0.headlines.removeAll { $0.id == id } }
+    }
+
+    private func isCommittedBackbone(_ id: UUID) -> Bool {
+        session.isCommittedBackbone(id)
     }
 
     // MARK: - Sort
 
     func setRole(_ role: HeadlineRole?, for id: UUID) {
+        guard session.canAssignRole(role, to: id) else {
+            coach.say("Your Backbone keywords are committed. Keep these required ideas; Topics and Details can still be relabeled.")
+            return
+        }
         update { s in
             guard let i = s.headlines.firstIndex(where: { $0.id == id }) else { return }
             s.headlines[i].role = role
@@ -181,6 +226,7 @@ final class SessionModel {
     }
 
     func toggleFlashcard(_ id: UUID) {
+        guard !isCommittedBackbone(id) else { return }
         update { s in
             guard let i = s.headlines.firstIndex(where: { $0.id == id }) else { return }
             s.headlines[i].isFlashcard.toggle()
@@ -220,10 +266,12 @@ final class SessionModel {
 
     @discardableResult
     func addNode(_ label: String, at point: CGPoint, headlineID: UUID? = nil, backbone: Bool? = nil, from origin: CGPoint? = nil) -> UUID {
-        let headline = headlineID.flatMap { id in session.headlines.first { $0.id == id } }
+        let matched = session.usesLocalCoach ? session.headlines.filter { $0.text.caseInsensitiveCompare(label) == .orderedSame } : []
+        let linkedID = headlineID ?? (matched.count == 1 ? matched.first?.id : nil)
+        let headline = linkedID.flatMap { id in session.headlines.first { $0.id == id } }
         let node = MapNode(label: label, position: point,
                            isBackbone: backbone ?? (headline?.role == .backbone),
-                           headlineID: headlineID)
+                           headlineID: linkedID)
         if let origin { spawnOrigins[node.id] = origin }
         editMap { $0.nodes.append(node) }
         return node.id
@@ -244,6 +292,7 @@ final class SessionModel {
     func renameNode(_ id: UUID, to label: String) {
         let t = label.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let i = map.index(of: id) else { return }
+        if let keyword = map.nodes[i].headlineID, isCommittedBackbone(keyword) { return }
         if t.isEmpty { deleteNode(id); return }
         guard map.nodes[i].label != t else { return }
         editMap { $0.nodes[i].label = t }
@@ -259,6 +308,7 @@ final class SessionModel {
 
     func toggleBackbone(_ id: UUID) {
         guard let i = map.index(of: id) else { return }
+        if let keyword = map.nodes[i].headlineID, isCommittedBackbone(keyword) { return }
         editMap { $0.nodes[i].isBackbone.toggle() }
     }
 
@@ -376,6 +426,7 @@ final class SessionModel {
             if let i = m.index(of: nodeID) { m.nodes[i].position = placement.position }
             else {
                 m.nodes.append(MapNode(id: nodeID, label: label, position: placement.position,
+                                       isBackbone: session.headlines.first { $0.id == placingHeadlineID }?.role == .backbone,
                                        group: parent.group, headlineID: placingHeadlineID))
             }
             if let edge = m.edge(between: nodeID, and: parent.id), let i = m.edgeIndex(of: edge.id) {
@@ -397,6 +448,7 @@ final class SessionModel {
     // MARK: - Demo controls (hidden menu — a safety net on stage)
 
     func demoAutoSort() {
+        guard !session.usesLocalCoach else { return }
         update { s in
             for i in s.headlines.indices {
                 s.headlines[i].role = DemoContent.suggestedRoles[s.headlines[i].text] ?? .detail
@@ -405,6 +457,7 @@ final class SessionModel {
     }
 
     func demoLoadWrongMap() {
+        guard !session.usesLocalCoach else { return }
         if session.headlines.isEmpty { update { $0.headlines = DemoContent.headlines() } }
         if session.headlines.allSatisfy({ $0.role == nil }) { demoAutoSort() }
         editMap { $0 = DemoContent.wrongMap(for: session.headlines) }
@@ -413,6 +466,7 @@ final class SessionModel {
     }
 
     func demoRegroup() {
+        guard !session.usesLocalCoach else { return }
         let target = DemoContent.regroupedMap(from: map, headlines: session.headlines)
         let hub = map.nodes.first { $0.label == "Hormones" }?.position ?? DemoContent.center
         for n in target.nodes where map.node(n.id) == nil { spawnOrigins[n.id] = hub }

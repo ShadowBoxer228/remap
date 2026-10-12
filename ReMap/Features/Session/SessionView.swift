@@ -38,40 +38,39 @@ private struct SessionScreen: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
                         .padding(.bottom, 16)
-                    GeometryReader { workspace in
-                        HStack(alignment: .top, spacing: 16) {
-                            if model.conversation.presentation == .voice {
-                                CoachDock(model: model, width: workspace.size.width < 700 ? 176 : 220,
-                                          maxHeight: min(300, max(160, workspace.size.height)))
-                                    .padding(.leading, 20)
-                            }
-                            content
-                                .id(model.session.phase.rawValue)
-                                .transition(.asymmetric(insertion: .offset(x: 60).combined(with: .opacity),
-                                                        removal: .offset(x: -60).combined(with: .opacity)))
-                        }
-                    }
+                    // The coach floats above the phase content, so opening it never
+                    // reflows or squeezes the study surface.
+                    content
+                        .id(model.session.phase.rawValue)
+                        .transition(.asymmetric(insertion: .offset(x: 60).combined(with: .opacity),
+                                                removal: .offset(x: -60).combined(with: .opacity)))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
         .background(PaperBackground())
         .animation(reduceMotion ? nil : .stopMotion(duration: 0.45, fps: 12), value: model.session.phase)
         .overlay {
-            if !model.session.phase.usesCanvas && model.conversation.presentation == .chat {
+            if !model.session.phase.usesCanvas && model.conversation.presentation != .collapsed {
                 GeometryReader { geometry in
                     let compact = geometry.size.width < 700
+                    let voice = model.conversation.presentation == .voice
                     let available = max(160, geometry.size.height - headerHeight - 44)
+                    let chatHeight = compact ? min(available, geometry.size.height * 0.4) : min(480, available)
                     CoachDock(model: model,
-                              width: compact ? max(1, geometry.size.width - 40) : 340,
-                              maxHeight: compact ? min(available, geometry.size.height * 0.4) : min(480, available))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity,
-                               alignment: compact ? .bottom : .topTrailing)
-                        .padding(.horizontal, 20)
-                        .padding(.top, headerHeight + 24)
-                        .padding(.bottom, 12)
+                              width: voice ? (compact ? 176 : 220) : (compact ? max(1, geometry.size.width - 40) : 340),
+                              maxHeight: voice ? min(320, available) : chatHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity,
+                           alignment: compact && !voice ? .bottom : .topTrailing)
+                    .padding(.horizontal, 20)
+                    .padding(.top, headerHeight + 24)
+                    .padding(.bottom, 12)
                 }
+                .transition(reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity))
             }
         }
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.38, bounce: 0.12),
+                   value: model.conversation.presentation == .collapsed)
         .overlay {
             CelebrationView(trigger: model.celebrate)
         }
@@ -100,7 +99,7 @@ struct SessionHeader: View {
     var onBack: () -> Void
 
     var body: some View {
-        GlassEffectContainer(spacing: 12) {
+        ReMapGlassContainer(spacing: 12) {
             ViewThatFits(in: .horizontal) {
                 wideHeader
                 VStack(spacing: 8) {
@@ -135,7 +134,7 @@ struct SessionHeader: View {
         Button(action: onBack) {
             Image(systemName: "chevron.left").font(.headline).frame(width: 44, height: 44)
         }
-        .buttonStyle(.glass)
+        .remapButtonStyle()
         .buttonBorderShape(.circle)
         .accessibilityLabel(Text("Back to library"))
     }
@@ -156,12 +155,14 @@ struct SessionHeader: View {
     private var demoMenu: some View {
         Menu {
             Section(String(localized: "Demo controls")) {
+                if !model.session.usesLocalCoach {
                 Button(String(localized: "Auto-sort headlines"), systemImage: "square.stack.3d.up") { model.demoAutoSort() }
                 Button(String(localized: "Load the 'wrong' map"), systemImage: "exclamationmark.triangle") {
                     withAnimation(Motion.flow) { model.demoLoadWrongMap() }
                 }
                 Button(String(localized: "Regroup by function"), systemImage: "arrow.triangle.branch") {
                     withAnimation(Motion.flow) { model.demoRegroup() }
+                }
                 }
                 Menu(String(localized: "Jump to phase")) {
                     ForEach(SessionPhase.allCases) { phase in

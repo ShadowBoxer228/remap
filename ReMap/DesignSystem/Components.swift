@@ -126,7 +126,7 @@ struct PrimaryButton: View {
             .font(.headline)
             .padding(.horizontal, 22).padding(.vertical, 14)
         }
-        .buttonStyle(.glassProminent)
+        .remapButtonStyle(prominent: true)
         .tint(Palette.ink)
     }
 }

@@ -35,13 +35,19 @@ struct CollectView: View {
             SourcePreview(session: model.session, url: app.sourceURL(for: model.session))
                 .frame(height: 220)
             CoachNote(text: coachLine)
+            if model.session.source.kind == .pdf && !model.isExtracting {
+                Button(model.session.needsSourceUpload ? "Retry PDF preparation" : "Prepare PDF again") {
+                    Task { await model.retryPDFUpload() }
+                }
+                    .remapButtonStyle()
+            }
             Spacer(minLength: 0)
         }
     }
 
     private var coachLine: String {
-        if model.isExtracting { return String(localized: "Skimming your source for its headlines…") }
-        if let message = model.extractionMessage, model.session.headlines.isEmpty { return message }
+        if model.isExtracting { return model.session.source.kind == .pdf ? "Reading your PDF on this iPad… Scanned pages may take a moment." : String(localized: "Skimming your source for its headlines…") }
+        if let message = model.extractionMessage { return message }
         return String(localized: "Don't draw anything yet. Skim these headlines, fix the wording, add what's missing. This is priming — it gives new facts something to hold on to.")
     }
 
@@ -85,7 +91,7 @@ struct CollectView: View {
                 PrimaryButton(title: String(localized: "Sort them"), systemImage: "arrow.right") {
                     model.advance(to: .sort)
                 }
-                .disabled(model.session.headlines.count < 3)
+                .disabled(model.session.headlines.count < 3 || model.isExtracting || model.session.needsSourceUpload)
             }
         }
         .padding(24)

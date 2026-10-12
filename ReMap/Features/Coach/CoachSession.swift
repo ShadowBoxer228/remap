@@ -78,6 +78,15 @@ final class CoachSession {
 
     func greet() {
         guard let model else { return }
+        if model.session.usesLocalCoach {
+            if model.session.needsSourceUpload {
+                say("First, prepare your PDF in Collect. Once its keywords appear, we can discuss ideas and look up source passages together.")
+                return
+            }
+            let prompt = model.session.phase == .collect ? "Which ideas seem important? Ask me for keywords or a source passage." : model.session.phase == .sort ? "Choose 3–5 Backbone keywords, then label the rest Topic or Detail. We can discuss any choice." : "Draw and think aloud. Ask about a connection, request a source passage, or tell me exactly what you want changed."
+            say(prompt)
+            return
+        }
         if model.session.phase == .details {
             say(String(localized: "Welcome back. Hang the details on your backbone — I'll keep an eye on the structure."),
                 replies: [String(localized: "Check my map")])
@@ -122,6 +131,14 @@ final class CoachSession {
     func startReview() {
         guard let model else { return }
         model.conversation.prepareForPhaseChange()
+        if model.session.usesLocalCoach {
+            // Learning-coach sessions review through the source-aware engine, not scripted findings.
+            pauseReview()
+            if model.session.phase.usesCanvas { model.advance(to: .check) }
+            model.conversation.openChat()
+            model.conversation.send("Discuss my map. Check the connections against the source and ask me one useful reflection question.")
+            return
+        }
         reset(preservingConversation: true)
         model.cancelPlacement()
         if model.session.phase < .check { model.advance(to: .check) }
@@ -540,8 +557,9 @@ final class CoachSession {
                   chosenPlacement?.id == placement.id, model.placingLabel == label else { return }
             isThinking = false
             if grounded {
-                say(String(localized: "Grounded in a relationship. I saved your reason on the arrow — check it against your source."))
+                say(model.session.usesLocalCoach ? "I saved your explanation on the arrow. We can discuss it against the source whenever you like." : String(localized: "Grounded in a relationship. I saved your reason on the arrow — check it against your source."))
                 withAnimation(Motion.spawn) { model.commitPlacement(placement, reason: answer) }
+                if model.session.usesLocalCoach { mode = .idle; return }
                 mode = .reviewing
                 scheduleNext(after: .milliseconds(1800))
             } else {

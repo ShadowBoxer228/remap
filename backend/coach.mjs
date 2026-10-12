@@ -57,8 +57,8 @@ export function parseReply(operation, body) {
   return { grounded: parsed.grounded };
 }
 
-export async function infer(input, key, Socket = WebSocket) {
-  const payload = prepare(input);
+export async function infer(input, key, Socket = WebSocket, prepared = null) {
+  const payload = prepared ?? prepare(input);
   return new Promise((resolve, reject) => {
     const socket = new Socket(ENDPOINT, { headers: { Authorization: `Bearer ${key}` },
       handshakeTimeout: 8000, maxPayload: 131072, followRedirects: false });
@@ -87,7 +87,7 @@ export async function infer(input, key, Socket = WebSocket) {
         if (event.type === 'session.updated' && !submitted) {
           submitted = true;
           socket.send(JSON.stringify({ type: 'conversation.item.create', item: {
-            type: 'message', role: 'user', content: [{ type: 'input_text', text: payload.prompt }]
+            type: 'message', role: 'user', content: [{ type: 'input_text', text: payload.prompt }, ...(payload.image ? [{type:'input_image',image_url:payload.image}] : [])]
           } }));
           socket.send(JSON.stringify({ type: 'response.create', response: { output_modalities: ['text'] } }));
         } else if (event.type === 'response.done') {
@@ -126,11 +126,11 @@ export function voiceSession(conversation = false) {
   };
 }
 
-export async function issueVoiceToken(key, fetcher = fetch, conversation = false) {
+export async function issueVoiceToken(key, fetcher = fetch, conversation = false, sessionOverride = null) {
   const response = await fetcher('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expires_after: { anchor: 'created_at', seconds: 60 }, session: voiceSession(conversation) })
+    body: JSON.stringify({ expires_after: { anchor: 'created_at', seconds: 60 }, session: sessionOverride ?? voiceSession(conversation) })
   });
   if (!response.ok) throw new Error('Voice unavailable');
   const body = await response.json();

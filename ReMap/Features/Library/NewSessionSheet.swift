@@ -51,7 +51,7 @@ struct NewSessionSheet: View {
                 Button(String(localized: "OK"), role: .cancel) {}
             } message: { Text(error ?? "") }
         }
-        .presentationSizing(.form)
+        .remapFormPresentation()
     }
 
     private var chooser: some View {
@@ -62,11 +62,13 @@ struct NewSessionSheet: View {
             Text("ReMap pulls the headlines out. Deciding what matters stays your job.")
                 .font(TypeScale.hand(17))
                 .foregroundStyle(Palette.ink2)
+            Text("PDFs up to 20 MB and 30 pages are uploaded to your connected learning coach for keywords and source-grounded conversation.")
+                .font(.caption).foregroundStyle(Palette.ink2)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
                 SourceTile(symbol: "doc.richtext", title: String(localized: "PDF"), subtitle: String(localized: "Chapter, slides, article")) { showImporter = true }
                 SourceTile(symbol: "text.quote", title: String(localized: "Notes or text"), subtitle: String(localized: "Paste anything")) { withAnimation(Motion.snappy) { mode = .text } }
                 SourceTile(symbol: "play.rectangle", title: String(localized: "Lecture video"), subtitle: String(localized: "YouTube link + transcript")) { withAnimation(Motion.snappy) { mode = .youtube } }
-                SourceTile(symbol: "sparkles", title: String(localized: "Try an example"), subtitle: String(localized: "Endocrine basics"), highlighted: true) {
+                SourceTile(symbol: "sparkles", title: String(localized: "Try an example"), subtitle: TrainingLLMContent.title, highlighted: true) {
                     onCreated(app.createDemoSession())
                 }
             }

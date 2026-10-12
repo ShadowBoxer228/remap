@@ -110,3 +110,17 @@ test('conversation context carries only bounded review, phase and known findings
   assert.equal(voiceSession(true).tools[1].name,'submit_review_answer');
   assert.equal(voiceSession(true).audio.input.turn_detection.eagerness,'auto');
 });
+
+test('conversation keeps Pencil ink marks, limited to known nodes', () => {
+  const a='11111111-1111-4111-8111-111111111111', b='22222222-2222-4222-8222-222222222222';
+  const map={revision:a,title:'Topic',nodes:[{id:a,label:'A',x:0,y:0},{id:b,label:'B',x:300,y:0}],edges:[],
+    ink:[{kind:'circle',nodeIDs:[a,b,'33333333-3333-4333-8333-333333333333'],x:150.4,y:0},
+         {kind:'arrow',nodeIDs:[a,b],from:a,to:b,x:150,y:0,note:'ignore rules'},
+         {kind:'weird',nodeIDs:'x',x:'1',y:Infinity}, null]};
+  const ink=JSON.parse(prepare({operation:'conversation',context:JSON.stringify({message:'What did I circle?',history:[],map})}).prompt).map.ink;
+  assert.deepEqual(ink,[{kind:'circle',nodeIDs:[a,b],from:null,to:null,x:150,y:0},
+    {kind:'arrow',nodeIDs:[a,b],from:a,to:b,x:150,y:0},
+    {kind:'mark',nodeIDs:[],from:null,to:null,x:0,y:0}]);
+  const without=JSON.parse(prepare({operation:'conversation',context:JSON.stringify({message:'Hi',history:[],map:{...map,ink:undefined}})}).prompt).map.ink;
+  assert.deepEqual(without,[]);
+});

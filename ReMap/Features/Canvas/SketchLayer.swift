@@ -69,6 +69,10 @@ struct SketchLayer: UIViewRepresentable {
         private var syncing = false
         private var pendingStrokeIDs: Set<UUID> = []
         private var convertTask: Task<Void, Never>?
+        /// Strokes already seen in sketch mode; PencilKit appends new ones at the end.
+        private var strokeCount = 0
+        /// The topic the last ink arrow reached, so its separately drawn head is absorbed too.
+        private var arrowTarget: (id: UUID, time: Date)?
 
         init(model: SessionModel) { self.model = model }
 
@@ -78,7 +82,10 @@ struct SketchLayer: UIViewRepresentable {
             self.mode = mode
             switch mode {
             case .sketch:
-                canvas.drawing = model.map.sketch.flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
+                let saved = model.map.sketch.flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
+                strokeCount = saved.strokes.count
+                arrowTarget = nil
+                canvas.drawing = saved
                 canvas.tool = PKInkingTool(.pen, color: UIColor(hex: 0x2B2E26), width: 3)
             case .handwrite, .off:
                 canvas.drawing = PKDrawing()
@@ -113,13 +120,44 @@ struct SketchLayer: UIViewRepresentable {
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
             switch mode {
             case .sketch:
-                let drawing = canvasView.drawing
+                var drawing = canvasView.drawing
+                // Only freshly inked strokes count; the pixel eraser also appends stroke fragments.
+                let absorbed = canvasView.tool is PKInkingTool && drawing.strokes.count > strokeCount
+                    && absorbArrows(in: &drawing, from: strokeCount)
+                strokeCount = drawing.strokes.count
+                if absorbed { canvasView.drawing = drawing }
                 model.saveSketch(drawing.strokes.isEmpty ? nil : drawing.dataRepresentation())
             case .handwrite:
                 scheduleConversion(canvasView.drawing)
             case .off:
                 break
             }
+        }
+
+        // MARK: Ink arrow → connection
+
+        /// A new stroke from one topic to another becomes that connection, and the ink goes away.
+        /// Returns whether any stroke was removed from `drawing`.
+        private func absorbArrows(in drawing: inout PKDrawing, from start: Int) -> Bool {
+            var removed = IndexSet()
+            for index in start..<drawing.strokes.count {
+                let points = InkGeometry.points(of: drawing.strokes[index])
+                if let link = InkGeometry.connection(for: points, in: model.map.nodes),
+                   let edge = model.connect(link.from, link.to) {
+                    removed.insert(index)
+                    model.selection = .edge(edge)
+                    arrowTarget = (link.to, .now)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } else if let target = arrowTarget, Date.now.timeIntervalSince(target.time) < 2.5,
+                          let node = model.map.node(target.id), InkGeometry.isArrowhead(points, at: node) {
+                    removed.insert(index)
+                } else {
+                    arrowTarget = nil
+                }
+            }
+            guard !removed.isEmpty else { return false }
+            drawing.strokes = drawing.strokes.enumerated().filter { !removed.contains($0.offset) }.map(\.element)
+            return true
         }
 
         // MARK: Handwriting → node

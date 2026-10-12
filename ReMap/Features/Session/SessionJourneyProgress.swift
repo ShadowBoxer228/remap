@@ -90,7 +90,11 @@ struct SessionJourneyProgress: View {
                 onSelect: { phase in
                     guard phase == model.session.phase || model.session.reachedPhases[phase] != nil else { return }
                     withAnimation(reduceMotion ? nil : .stopMotion(duration: 0.32, fps: 15)) {
-                        if phase != model.session.phase { model.advance(to: phase) }
+                        if phase != model.session.phase {
+                            model.coach.pauseReview()
+                            model.conversation.close()
+                            model.advance(to: phase)
+                        }
                         isExpanded = false
                     }
                 },
@@ -109,79 +113,70 @@ private struct JourneyBarControl: View {
     @Binding var isExpanded: Bool
     var onSelect: (SessionPhase) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private enum Labels { case all, current, none }
+    @Environment(\.dynamicTypeSize) private var dynamicType
+    @Namespace private var activeTab
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            strip(labels: .all).fixedSize(horizontal: true, vertical: false)
-            strip(labels: .current).fixedSize(horizontal: true, vertical: false)
-            strip(labels: .none).fixedSize(horizontal: true, vertical: false)
+        GeometryReader { geometry in
+            let showsLabels = geometry.size.width >= 350 && !dynamicType.isAccessibilitySize
+            HStack(spacing: 6) {
+                ForEach(SessionPhase.allCases) { item in
+                    VStack(spacing: 4) {
+                        marker(item, showsLabel: showsLabels)
+                        Capsule()
+                            .fill(item == phase ? Palette.ink : reached.contains(item) ? Palette.oliveDeep : Palette.hairline)
+                            .frame(height: 2)
+                            .padding(.horizontal, 6)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(6)
+            .background {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Palette.surface.opacity(0.94))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(Palette.ink.opacity(0.08), lineWidth: 0.75)
+                    }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .animation(reduceMotion ? nil : .stopMotion(duration: 0.28, fps: 15), value: phase)
+        .frame(minWidth: 256, maxWidth: .infinity)
+        .frame(height: 74)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: phase)
         .sensoryFeedback(.selection, trigger: phase)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Study journey"))
         .accessibilityIdentifier("journey.bar")
     }
 
-    private func strip(labels: Labels) -> some View {
-        VStack(spacing: 5) {
-            HStack(spacing: 4) {
-                ForEach(SessionPhase.allCases) { item in
-                    marker(item, labels: labels)
-                }
-            }
-            HStack(spacing: 4) {
-                ForEach(SessionPhase.allCases) { item in
-                    Capsule()
-                        .fill(item == phase ? Palette.ink : reached.contains(item) ? Palette.oliveDeep : Palette.hairline)
-                        .frame(height: 2)
-                }
-            }
-            .padding(.horizontal, 5)
-            .accessibilityHidden(true)
-        }
-        .padding(6)
-        .background {
-            RoundedRectangle(cornerRadius: 17)
-                .fill(Palette.surface.opacity(0.96))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 17)
-                        .strokeBorder(Palette.ink.opacity(0.1), lineWidth: 0.75)
-                }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Study journey"))
-    }
-
-    private func marker(_ item: SessionPhase, labels: Labels) -> some View {
+    private func marker(_ item: SessionPhase, showsLabel: Bool) -> some View {
         let current = item == phase
         let available = current || reached.contains(item)
         return Button {
             if current { isExpanded.toggle() } else { onSelect(item) }
         } label: {
-            Group {
-                if labels == .all {
-                    VStack(spacing: 3) {
-                        Image(systemName: item.journeySymbol).font(.system(size: 17, weight: .medium))
-                        Text(item.title).font(.caption2.weight(current ? .bold : .medium)).fixedSize()
-                    }
-                    .padding(.horizontal, 10)
-                } else {
-                    HStack(spacing: 7) {
-                        Image(systemName: item.journeySymbol).font(.system(size: 18, weight: .medium))
-                        if current && labels == .current {
-                            Text(item.title).font(.subheadline.weight(.semibold)).fixedSize()
-                            Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
-                        }
-                    }
-                    .padding(.horizontal, current && labels == .current ? 10 : 0)
+            VStack(spacing: 2) {
+                JourneyPencilIcon(phase: item)
+                    .frame(width: 34, height: 34)
+                    .opacity(current ? 1 : available ? 0.86 : 0.38)
+                if showsLabel {
+                    Text(item.title)
+                        .font(.caption2.weight(current ? .bold : .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
             }
             .foregroundStyle(current ? Palette.ink : available ? Palette.ink2 : Palette.ink3)
-            .frame(minWidth: 44, minHeight: 44)
+            .frame(minWidth: 44, maxWidth: .infinity)
+            .frame(height: 56)
             .background {
-                if current { JourneyPaperShape().fill(Palette.highlighter).padding(.vertical, 1) }
+                if current {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Palette.highlighter)
+                        .matchedGeometryEffect(id: "pencil-current", in: activeTab)
+                }
             }
             .contentShape(Rectangle())
         }
@@ -196,6 +191,18 @@ private struct JourneyBarControl: View {
                                 String(localized: "Continue through the earlier steps to unlock.")))
         .accessibilityAddTraits(current ? [.isSelected] : [])
         .accessibilityIdentifier("journey.marker.\(item.rawValue)")
+    }
+}
+
+private struct JourneyPencilIcon: View {
+    let phase: SessionPhase
+
+    var body: some View {
+        Image(phase.journeyPencilAsset)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .accessibilityHidden(true)
     }
 }
 
@@ -511,10 +518,16 @@ private struct JourneyProgressMenu: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Image(systemName: current ? item.journeySymbol : visited ? "arrow.uturn.backward" : "lock")
-                    .font(.system(size: current ? 21 : 13, weight: .medium))
-                    .foregroundStyle(current ? Palette.ink : Palette.ink2)
-                    .frame(width: 28)
+                Group {
+                    if current {
+                        JourneyPencilIcon(phase: item).frame(width: 28, height: 28)
+                    } else {
+                        Image(systemName: visited ? "arrow.uturn.backward" : "lock")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Palette.ink2)
+                    }
+                }
+                .frame(width: 28)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -582,6 +595,15 @@ nonisolated private struct JourneyPerforation: Shape {
 private extension SessionPhase {
     var journeyNumber: String { String(format: "%02d", rawValue + 1) }
     var journeySymbol: String { self == .details ? "brain" : symbol }
+    var journeyPencilAsset: String {
+        switch self {
+        case .collect: "journey_collect_pencil"
+        case .sort: "journey_sort_pencil"
+        case .backbone: "journey_backbone_pencil"
+        case .check: "journey_reflect_pencil"
+        case .details: "journey_mindmap_pencil"
+        }
+    }
 }
 
 #Preview("Journey — Reflect") {

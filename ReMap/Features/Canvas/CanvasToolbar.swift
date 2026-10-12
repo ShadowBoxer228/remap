@@ -7,7 +7,7 @@ struct CanvasToolbar: View {
     var onAdd: () -> Void
 
     var body: some View {
-        GlassEffectContainer(spacing: 10) {
+        ReMapGlassContainer(spacing: 10) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) {
                     drawingTools
@@ -41,7 +41,7 @@ struct CanvasToolbar: View {
             penTool(.sketch, symbol: "scribble.variable", label: String(localized: "Sketch"))
         }
         .padding(6)
-        .glassEffect(.regular, in: .capsule)
+        .remapGlass(in: Capsule())
     }
 
     private var editingTools: some View {
@@ -57,7 +57,7 @@ struct CanvasToolbar: View {
             tool("arrow.up.left.and.down.right.magnifyingglass", String(localized: "Fit map"), action: onFit)
         }
         .padding(6)
-        .glassEffect(.regular, in: .capsule)
+        .remapGlass(in: Capsule())
     }
 
     private func reviewButton(compact: Bool = false) -> some View {
@@ -127,19 +127,19 @@ struct EdgeInspector: View {
                 } label: {
                     Label(String(localized: "Delete link"), systemImage: "trash")
                 }
-                .buttonStyle(.glass)
+                .remapButtonStyle()
                 Spacer()
                 Button(String(localized: "Done")) {
                     save()
                     withAnimation(Motion.snappy) { model.selection = .none }
                 }
-                .buttonStyle(.glassProminent)
+                .remapButtonStyle(prominent: true)
                 .tint(Palette.ink)
             }
         }
         .padding(16)
         .frame(width: width)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .remapGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onAppear { reason = edge.reason }
         .onChange(of: edge.id) { _, _ in reason = edge.reason }
     }

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { nativeRoutes } from './native.mjs';
 import { bodyLimit } from 'hono/body-limit';
 import { timingSafeEqual } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
@@ -47,6 +48,7 @@ export function gateway({ key, token, reserve, inferFn = infer, tokenFn = issueV
     if (!key || !reserve) return c.json({ error: 'not_configured' }, 503);
     await next();
   });
+  app.route('/api/native', nativeRoutes({key, reserve, inferFn, tokenFn}));
   app.use('*', bodyLimit({ maxSize: 32768, onError: c => c.json({ error: 'request_too_large' }, 413) }));
   app.post('/coach', async c => {
     let input;
@@ -80,4 +82,4 @@ export default gateway({ key: process.env.OPENAI_API_KEY, token: process.env.REM
   coverRepository: process.env.DATABASE_URL ? coverDatabase(process.env.DATABASE_URL) : undefined,
   access: installationAccess({ secret: process.env.REMAP_ENROLLMENT_SECRET,
     repository: process.env.DATABASE_URL ? enrollmentDatabase(process.env.DATABASE_URL) : undefined,
-    verify: appleInstallationVerifier(process.env.REMAP_APP_APPLE_ID) }) });
+    verify: appleInstallationVerifier() }) });

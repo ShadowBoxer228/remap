@@ -1,102 +1,118 @@
-# ReMap
+<div align="center">
+  <img src="ReMap/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="112" alt="ReMap — connected ideas on paper">
+  <h1>ReMap</h1>
+  <p><strong>Turn what you read into a map you can explain.</strong></p>
+  <p>A native iPad study canvas with Pencil input, PDF context and a conversational coach.</p>
+  <p><strong>iPadOS 17+</strong> · SwiftUI · PencilKit · OpenAI Realtime</p>
+  <p><a href="#the-learning-flow">Explore</a> · <a href="#run-the-app">Run locally</a> · <a href="docs/ARCHITECTURE.md">Architecture</a> · <a href="backend/README.md">Backend</a></p>
+</div>
 
-A native iPad learning canvas. Collect headings from a PDF or pasted notes, sort
-them into backbone/topic/detail ideas, draw a map, and explain its relationships
-to a Socratic coach. Maps and Pencil sketches persist locally. The example topic
-is endocrine regulation; calcitonin lowers blood calcium and parathormone raises it.
+---
 
-## Run
+Reading gives you information. Explaining the connections shows what you understand.
+ReMap brings those activities onto a paper-inspired canvas: collect ideas from a PDF,
+organize them, connect them and talk through your reasoning.
 
-Requires Xcode 27, iOS 26+ and an iPad. Open `ReMap.xcodeproj` and select the ReMap
-scheme. This generated project is ignored by Git; run `xcodegen generate` on a
-fresh checkout. New Swift files in synchronized source folders need no regeneration.
+## The learning flow
+
+| Step | What you do |
+| :--- | :--- |
+| **Collect** | Import a PDF, paste notes or start with the included demo. |
+| **Sort** | Separate backbone ideas, supporting topics and details. |
+| **Build** | Place ideas and connect them on a zoomable canvas. |
+| **Reflect** | Explain relationships through text or live voice. |
+| **Revisit** | Reopen saved maps, refine connections and keep learning. |
+
+### Made for the iPad
+
+- **A tactile canvas.** Move ideas, draw with Pencil and keep sketches alongside the map.
+- **A coach in context.** Conversations use the current map and available source material; PDF references open the relevant page.
+- **Text and voice.** Ask a question, explain a connection or request a map edit. Voice includes live captions.
+- **Edits you control.** Explicit coach commands are checked against the current map and applied as one undoable transaction.
+- **Local persistence.** Maps, source documents and sketches stay on the device. Cloud coaching can be disabled.
+- **Paper, ink and motion.** Warm textures and graphite illustrations support the learning flow.
+
+## Run the app
+
+The current toolchain is **Xcode 27**, Swift 6 and
+[XcodeGen](https://github.com/yonaskolb/XcodeGen). The deployment target is
+**iPadOS 17.0**; the SDK version does not change that requirement.
 
 ```sh
-xcodebuild -project ReMap.xcodeproj -scheme ReMap \
-  -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath build/CoreDerivedData build
+git clone https://github.com/ShadowBoxer228/remap.git
+cd remap
+xcodegen generate
+open ReMap.xcodeproj
 ```
 
-Before using a simulator in this shared checkout, read `COORDINATION.md`. For
-tests, replace the destination with an explicit available iPad simulator UUID and
-use `test`. Unit tests cover map rules, layout, camera transforms, persistence,
-grouping, placement undo, flow transitions, atomic coach commands and PCM audio decoding. Tests use isolated local stores.
+Select the **ReMap** scheme and an iPad simulator. For a physical device, choose
+your own signing team in Xcode. `project.yml` defines the project; generated Xcode
+projects and personal signing state are excluded from Git.
 
-## Coach and voice
+Build without installing:
 
-Cloud coach is on by default for the approved internal build. Users can switch it
-off in Library settings. Foundation Models provides short questions and
-relationship checks when Apple Intelligence is available; otherwise deterministic
-questions and a limited relationship heuristic are used. The heuristic is not a
-general fact checker. The demo's questions remain deterministic.
+```sh
+xcodebuild -project ReMap.xcodeproj -scheme ReMap -destination 'generic/platform=iOS Simulator' -derivedDataPath build/LocalDerivedData build
+```
 
-The cloud coach uses **OpenAI Realtime (`gpt-realtime-2.1`)**. A private
-Vercel gateway handles text questions, judgments and conversation, and issues 60-second client
-secrets for direct iPad audio connections. The OpenAI project key never enters
-the app. Judgments use a forced `record_verdict` function with a boolean argument;
-malformed output fails closed. Open conversation uses a bounded board snapshot and
-recent chat history. Explicit edit requests may produce typed board commands: the
-app validates the latest request, map revision and every operation before applying
-one undoable transaction. Commands include grouping, arrow direction, highlighting
-and undo. Highlights preserve the map and camera. Explanations alone must not edit
-the board. Active review answers have a separate validated route, so other questions
-and commands remain available during placement.
+The local canvas does not require a provider key. Cloud features require an
+authorized gateway connection. TestFlight access is managed separately; cloning
+this repository does not grant access to the hosted service. To run your own
+gateway, follow [backend/README.md](backend/README.md).
 
-The approved internal DEBUG installation provisions access automatically to
-`https://remap-coach.vercel.app`. The maintainer's tester credential stays in
-ignored, owner-readable local files and the app's Keychain. The app has no manual
-URL or credential form. Never enter an OpenAI key in the app.
+## How it fits together
 
-Cloud consent covers relevant map labels, relationships, positions, recent messages
-and microphone audio. Continuous voice streams the microphone until muted or closed.
-PDFs and sketches stay local. Disable cloud coach in Library settings to
-return to on-device operation. Structured review questions/checks fall back locally; open conversation and cloud
-voice failures show an explicit message rather than silently changing provider.
+```mermaid
+flowchart LR
+    PDF[PDF / notes] --> iPad[Native iPad app]
+    Pencil[Pencil + map edits] --> iPad
+    iPad --> Local[(Local documents + maps)]
+    iPad -->|Authenticated requests| Gateway[Vercel gateway]
+    Gateway --> AI[OpenAI]
+    Gateway --> Access[(Installation access + usage)]
+    Gateway --> Covers[Optional cover generation]
+    iPad <-->|Temporary credential · live audio| AI
+```
 
-Voice uses semantic voice activity detection to commit each spoken turn. The app
-waits for transcription, attaches the current board and requests a response. It
-streams actual assistant captions and mono PCM at 24 kHz. Speaking interrupts
-playback and removes unplayed response audio from conversation history. Mute,
-retry, close and background shutdown are explicit. Voice closes after five minutes;
-the legacy push-to-talk transport also limits a recording to 45 seconds.
+Provider credentials stay on the server. The app stores installation access in
+Keychain and uses temporary credentials for live voice. The gateway owns model
+configuration; the app validates map mutations again before applying them. Read the
+[architecture notes](docs/ARCHITECTURE.md) and [privacy boundaries](docs/PRIVACY.md).
 
-The server secret's 60-second TTL controls connection establishment, not session
-duration. These client controls are not a hard provider billing cap. The current
-WebSocket transport still needs physical-device audio/route/echo testing.
+## Repository guide
 
-For the approved internal DEBUG build, `tools/prepare_internal_library.py` can
-provision the existing tester credential into the app's data container. The app
-moves it to Keychain and deletes the provisioning file. No secret enters the binary;
-subsequent launches respect the user's settings.
+| Path | Contents |
+| :--- | :--- |
+| [`ReMap/`](ReMap/) | Native application, canvas, coach, source handling and persistence |
+| [`ReMapTests/`](ReMapTests/) | Model, command, lifecycle and audio tests |
+| [`backend/`](backend/) | Authenticated Hono gateway and protocol tests |
+| [`art/`](art/README.md) | Illustration sources, prompts and visual identity |
+| [`Licenses/`](Licenses/) | Third-party font license |
+| [`tools/`](tools/) | Asset preparation and development helpers |
+| [`project.yml`](project.yml) | XcodeGen project definition |
 
-## Backend
+## Snapshot
 
-See [backend/README.md](backend/README.md) for configuration, request caps and
-deployment. Coach calls are billed to OpenAI. The separately approved topic-cover
-feature uses fal.ai nano-banana-2, one 1K image per job, behind its own 100-job cap.
-It requires FAL_KEY in Vercel; it cannot use the desktop connector as an app credential.
-The isolated Neon database holds counters and cover-job metadata, not full maps or audio.
-No analytics or advertising SDK is included. The privacy manifest declares
-optional audio/user content for app functionality and UserDefaults reason CA92.1.
-Provider retention follows the configured OpenAI account policies; this app does
-not claim zero retention. App Store privacy answers must reflect that setup.
+This repository currently contains the completed **1.0.0 (4)** app source and matching gateway snapshot. Further coaching refinements are in development and will be published after qualification.
 
-## Release
+## Verification and platform support
 
-Bundle ID `com.selimtatar.ReMap`, team `334SK39CVZ`, version 1.0.0, build 1.
-Create the **ReMap** iOS app record in App Store Connect with that exact bundle ID.
-The archive/export workflow and current evidence are tracked in `HANDOFF.md`.
-Upload to internal TestFlight requires explicit user confirmation; no upload is
-performed by building or archiving. Increment the build number for each upload.
-Fresh Release/TestFlight installations still need an approved tester enrollment
-path: the current automatic provisioning is DEBUG-only. A signed archive alone
-does not establish cloud access for new TestFlight testers.
+Backend checks run with `npm ci` and `npm test` from `backend/`. Native tests run
+with the ReMap scheme on an explicitly selected iPad simulator; see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-Physical iPad verification remains necessary for Pencil/handwriting, audio route
-changes, Apple Intelligence and the 60fps performance target. Simulator/API tests
-do not establish those results. See `build/QA/core-*` and the other agents' status
-files for timestamped evidence. There is no commit or remote push yet.
+**iPadOS 17 is the primary target.** Newer APIs have compatibility paths; Foundation
+Models is optional. A build targeting 17 or a run on a newer simulator is not an
+actual iPadOS 17 runtime check. Physical Pencil, acoustic behavior and fresh
+TestFlight enrollment need their own device evidence. See [IOS17.md](IOS17.md).
 
-The selected icon and its source prompt are documented in
-[art/branding/README.md](art/branding/README.md). Third-party font licensing is in
-`Licenses/`.
+## Contributing and security
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). For security reports and credential
+handling, read [SECURITY.md](SECURITY.md). Keep private documents, recordings, tokens
+and device identifiers out of public issues.
+
+Shantell Sans is distributed under the [SIL Open Font License](Licenses/OFL-ShantellSans.txt).
+Artwork provenance is documented in [art/README.md](art/README.md). Public source
+visibility does not itself grant a license to the rest of the project; no general
+open-source license is currently specified.

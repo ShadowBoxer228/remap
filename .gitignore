@@ -14,3 +14,32 @@ node_modules/
 
 .vercel/
 __pycache__/
+
+# Local coordination and operational evidence stay private.
+/AGENTS.md
+/COORDINATION.md
+/HANDOFF.md
+/ROADMAP.md
+/coordination/
+/art/codex-imagegen*.log
+/art/generated/REPORT.md
+/art/generated/manifest.json
+*.log
+
+# Credentials, signing material and private application data.
+*.p8
+*.p12
+*.pfx
+*.key
+*.mobileprovision
+*.ipa
+*.xcarchive/
+*.dSYM/
+*tester-token*.txt
+InternalConnection.plist
+id_rsa*
+id_ed25519*
+credentials.json
+.claude/
+.codex/
+*.bundle

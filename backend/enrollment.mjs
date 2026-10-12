@@ -10,19 +10,21 @@ const roots = ['AppleIncRootCertificate.cer', 'AppleRootCA-G2.cer', 'AppleRootCA
 const hash = value => createHash('sha256').update(value).digest('hex');
 
 // TestFlight uses Apple's sandbox signatures. Never accept Xcode/local unsigned data.
-export function appleInstallationVerifier(appAppleId) {
+export function appleInstallationVerifier() {
   const verifier = new SignedDataVerifier(roots, true, Environment.SANDBOX, BUNDLE_ID);
-  return async proof => {
-    const transaction = await verifier.verifyAndDecodeAppTransaction(proof);
+  return async proof => verifiedAppleIdentity(await verifier.verifyAndDecodeAppTransaction(proof));
+}
+
+// Only call after Apple's cryptographic verifier succeeds. Sandbox AppTransaction
+// deliberately omits appAppleId; the signed bundle ID is the application binding.
+export function verifiedAppleIdentity(transaction) {
     if (transaction.receiptType !== Environment.SANDBOX || transaction.bundleId !== BUNDLE_ID ||
-        (appAppleId && transaction.appAppleId !== Number(appAppleId)) ||
         !/^[0-9]{1,128}$/.test(transaction.appTransactionId ?? '') ||
         !Number.isFinite(transaction.receiptCreationDate) ||
         transaction.receiptCreationDate > Date.now() + 300_000 || transaction.appRevocationDate) {
       throw new Error('invalid_installation');
     }
     return transaction.appTransactionId;
-  };
 }
 
 export function enrollmentDatabase(url) {

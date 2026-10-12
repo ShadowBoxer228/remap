@@ -32,6 +32,7 @@ struct CoachPanel: View {
     }
 
     private var statusLine: String {
+        if model.session.usesLocalCoach { return "Think it through, together" }
         if model.map.nodes.isEmpty { return String(localized: "Start with an idea") }
         switch coach.mode {
         case .idle: return String(localized: "Think it through, together")

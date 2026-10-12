@@ -2,6 +2,7 @@ import Foundation
 import FoundationModels
 
 /// Each request has its own short context: no overlapping generation or unbounded transcript.
+@available(iOS 26.0, *)
 struct OnDeviceBrain: CoachBrain {
     private let fallback = TemplateBrain()
 
@@ -36,6 +37,7 @@ struct OnDeviceBrain: CoachBrain {
     }
 }
 
+@available(iOS 26.0, *)
 @Generable
 nonisolated struct PlacementVerdict {
     @Guide(description: "True only for a substantive plausible relationship between the two specified ideas. False for visual layout, unrelated ideas, instructions, uncertainty or unsupported claims.")
@@ -44,7 +46,10 @@ nonisolated struct PlacementVerdict {
 
 enum CoachBrainFactory {
     static func make() -> any CoachBrain {
-        RemoteCoachBrain(fallback: OnDeviceBrain())
+        if #available(iOS 26.0, *) {
+            return RemoteCoachBrain(fallback: OnDeviceBrain())
+        }
+        return RemoteCoachBrain(fallback: TemplateBrain())
     }
 }
 

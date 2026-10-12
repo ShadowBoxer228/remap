@@ -63,6 +63,11 @@ nonisolated struct SourceInfo: Codable, Equatable, Sendable {
     var url: URL? = nil
     /// Pasted text or transcript.
     var text: String? = nil
+    /// Registered backend identity; optional fields preserve older saved sessions.
+    var sourceId: String? = nil
+    var pageCount: Int? = nil
+    /// Set when this PDF was imported or re-uploaded for the learning-coach engine; nil keeps the cloud coach.
+    var usesLearningEngine: Bool? = nil
 }
 
 nonisolated struct StudySession: Identifiable, Codable, Equatable, Sendable {
@@ -89,9 +94,9 @@ nonisolated struct StudySession: Identifiable, Codable, Equatable, Sendable {
     /// Collected headlines not yet drawn on the map.
     var unplacedHeadlines: [Headline] {
         let placed = Set(map.nodes.compactMap(\.headlineID))
-        let roles: Set<HeadlineRole> = phase >= .details ? [.backbone, .topic, .detail] : [.backbone, .topic]
+        let roles: Set<HeadlineRole> = phase >= .details ? [.backbone, .topic, .detail] : usesLocalCoach ? [.backbone] : [.backbone, .topic]
         return headlines.filter { h in
-            !placed.contains(h.id) && !h.isFlashcard && h.text != map.title && (h.role.map(roles.contains) ?? false)
+            !placed.contains(h.id) && !h.isFlashcard && (usesLocalCoach || h.text != map.title) && (h.role.map(roles.contains) ?? false)
         }
     }
 
